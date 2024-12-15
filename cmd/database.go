@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	_"github.com/lib/pq"
 )
 
 
@@ -16,6 +17,7 @@ func NewDatabase() *Connection {
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v" , err)
 	}
+	log.Println("Connected to database")
 	return &Connection{
 		db: conn,
 	}

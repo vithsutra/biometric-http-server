@@ -13,7 +13,7 @@ func Start(db *sql.DB) {
 	// Creating new server struct
 	server := &http.Server{
 		Addr: os.Getenv("PORT"),
-		Handler: InitilizeHttpRouters(),
+		Handler: InitilizeHttpRouters(db),
 	}
 
 	// Initilizing database with tables
