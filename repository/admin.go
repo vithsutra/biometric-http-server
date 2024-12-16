@@ -1,11 +1,17 @@
 package repository
 
 import (
+	"bytes"
 	"database/sql"
+	"fmt"
+	"log"
 	"net/http"
+	"net/smtp"
+	"os"
 	"text/template"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
+	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
@@ -19,59 +25,72 @@ func NewAdminRepo(db *sql.DB) *AdminRepo {
 	}
 }
 
+func (ar *AdminRepo) FetchAllUsers() ([]models.Admin,error) {
+	query := database.NewQuery(ar.db)
+	users , err := query.FetchAllUsers()
+	if err != nil {
+		return nil , err
+	}
+	return users , nil
+}
 func (ar *AdminRepo) GiveUserAccess(r *http.Request) error {
 	var user models.Admin
-	var password string
-	if err := utils.Decode(r , &user); err != nil {
+	if err := utils.Decode(r, &user); err != nil {
 		return err
 	}
-	if err := ar.db.QueryRow("SELECT password FROM users WHERE user_name=$1", newUser.UserName).Scan(&password); err != nil {
-		return err
-	}
-	if err := utils.CheckPassword(password , user.Password); err != nil {
-		return err
-	}
-	tmpl, err := template.ParseFiles("../pkg/templates/email.layout.tmpl")
+	query := database.NewQuery(ar.db)
+	dbusr, err := query.GiveUserAccess(user.UserId)
 	if err != nil {
-		return fmt.Errorf("failed to load email template: %v", err)
+		return err
 	}
-
-	// Create the data for the template
-	data := struct {
-		Subject  string
-		UserName string
-		Password string
-	}{
-		Subject:  "Access Granted to VSENSE Fingerprint Software",
-		UserName: newUser.UserName,
-		Password: newUser.Password,
+	if err := utils.CheckPassword(dbusr.Password, user.Password); err != nil {
+		return err
 	}
+	go func(user models.Admin, dbusr models.Admin) {
+		tmpl, err := template.ParseFiles("pkg/templates/email.layout.tmpl")
+		if err != nil {
+			log.Printf("Unable to parse email template: %v\n" , err)
+			return
+		}
 
-	// Generate the email body
-	var emailBody bytes.Buffer
-	if err := tmpl.Execute(&emailBody, data); err != nil {
-		return fmt.Errorf("failed to execute email template: %v", err)
-	}
+		data := struct {
+			Subject  string
+			UserName string
+			Password string
+		}{
+			Subject:  "Access Granted to VSENSE Fingerprint Software",
+			UserName: dbusr.UserName,
+			Password: user.Password,
+		}
 
-	// Convert the mail body to bytes
-	mailMessage := []byte(fmt.Sprintf("Subject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s", data.Subject, emailBody.String()))
+		var emailBody bytes.Buffer
+		if err := tmpl.Execute(&emailBody, data); err != nil {
+			log.Printf("Error executing email template: %v\n", err)
+			return
+		}
 
-	// Set up the SMTP client
-	mailDetails := smtp.PlainAuth(
-		"", 
-		os.Getenv("SMTP_USERNAME"), 
-		os.Getenv("SMTP_PASSWORD"), 
-		os.Getenv("SMTP_SERVICE"),
-	)
-	err = smtp.SendMail(
-		"smtp.gmail.com:587", 
-		mailDetails, 
-		os.Getenv("SMTP_USERNAME"), 
-		[]string{newUser.Email}, 
-		mailMessage,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to send email: %v", err)
-	}
+		mailMessage := []byte(fmt.Sprintf(
+			"Subject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+			data.Subject, emailBody.String(),
+		))
+
+		mailDetails := smtp.PlainAuth(
+			"", 
+			os.Getenv("SMTP_USERNAME"), 
+			os.Getenv("SMTP_PASSWORD"), 
+			os.Getenv("SMTP_SERVICE"),
+		)
+
+		err = smtp.SendMail(
+			"smtp.gmail.com:587",
+			mailDetails,
+			os.Getenv("SMTP_USERNAME"),
+			[]string{user.Email},
+			mailMessage,
+		)
+		if err != nil {
+			log.Printf("Error sending email: %v\n", err)
+		}
+	}(user, dbusr)
 	return nil
 }

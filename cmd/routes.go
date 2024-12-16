@@ -14,6 +14,8 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	authHandler := handlers.NewAuthHandler(repository.NewAuthRepo(db))
 	router.HandleFunc("/{id}/register" , authHandler.RegisterHandler).Methods("POST")
 	router.HandleFunc("/{id}/login" , authHandler.LoginHandler).Methods("POST")
-
+	adminHandler := handlers.NewAdminHandler(repository.NewAdminRepo(db))
+	router.HandleFunc("/admin/getusers" , adminHandler.FetchAllUsersHandler)
+	router.HandleFunc("/admin/giveaccess" , adminHandler.GiveUserAccessHandler)
 	return router
 }

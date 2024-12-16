@@ -1,33 +1,33 @@
 <!DOCTYPE html>
-		<html>
-		<head>
-			<meta charset="UTF-8">
-			<title>%s</title>
-			<style>
-				body { font-family: Arial, sans-serif; color: #000000; background-color: #ffffff; margin: 0; padding: 0; }
-				.container { width: 90%%; margin: 0 auto; padding: 20px; }
-				.header { border-bottom: 2px solid #000000; padding-bottom: 10px; margin-bottom: 20px; }
-				.header h2 { margin: 0; color: #000000; }
-				.content { margin-bottom: 20px; }
-				.footer { border-top: 2px solid #000000; padding-top: 10px; text-align: center; color: #000000; }
-			</style>
-		</head>
-		<body>
-			<div class="container">
-				<div class="header">
-					<h2>%s</h2>
-				</div>
-				<div class="content">
-					<p>Hello <b>%s</b>,</p>
-					<p>We are pleased to inform you that access has been granted to the VSENSE Fingerprint Software.</p>
-					<p><b>Username:</b> %s</p>
-					<p><b>Password:</b> %s</p>
-					<p>Please ensure to keep your credentials secure and do not share them with unauthorized individuals.</p>
-					<p>If you need any assistance, feel free to contact our support team.</p>
-				</div>
-				<div class="footer">
-					<p>Best regards,<br>The VSENSE Team</p>
-				</div>
-			</div>
-		</body>
-		</html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{.Subject}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #000000; background-color: #ffffff; margin: 0; padding: 0; }
+        .container { width: 90%; margin: 0 auto; padding: 20px; }
+        .header { border-bottom: 2px solid #000000; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h2 { margin: 0; color: #000000; }
+        .content { margin-bottom: 20px; }
+        .footer { border-top: 2px solid #000000; padding-top: 10px; text-align: center; color: #000000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>{{.Subject}}</h2>
+        </div>
+        <div class="content">
+            <p>Hello <b>{{.UserName}}</b>,</p>
+            <p>We are pleased to inform you that access has been granted to the VSENSE Fingerprint Software.</p>
+            <p><b>Username:</b> {{.UserName}}</p>
+            <p><b>Password:</b> {{.Password}}</p>
+            <p>Please ensure to keep your credentials secure and do not share them with unauthorized individuals.</p>
+            <p>If you need any assistance, feel free to contact our support team.</p>
+        </div>
+        <div class="footer">
+            <p>Best regards,<br>The VSENSE Team</p>
+        </div>
+    </div>
+</body>
+</html>
