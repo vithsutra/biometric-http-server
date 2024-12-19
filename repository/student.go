@@ -24,7 +24,7 @@ func NewStudentRepo(db *sql.DB) *StudentRepo {
 
 func (sr *StudentRepo) GenerateStudentAttendenceReport(r *http.Request) (*bytes.Buffer, error) {
 	var details models.Student
-	if err := utils.Decode(r , details); err != nil {
+	if err := utils.Decode(r , &details); err != nil {
 		return nil,err
 	}
 	query := database.NewQuery(sr.db)
@@ -41,7 +41,7 @@ func (sr *StudentRepo) GenerateStudentAttendenceReport(r *http.Request) (*bytes.
 
 func(sr *StudentRepo) NewStudent(r *http.Request) error {
 	var newStudent models.Student
-	if err := utils.Decode(r , newStudent); err != nil {
+	if err := utils.Decode(r , &newStudent); err != nil {
 		return err
 	}
 	newStudent.StudentId = uuid.NewString()

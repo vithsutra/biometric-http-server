@@ -28,5 +28,7 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	router.HandleFunc("/users/update" , studentHandler.UpdateStudentHandler).Methods("POST")
 	router.HandleFunc("/users/generatepdf" , studentHandler.GenerateStudentAttendenceReportHandler).Methods("POST")
 	router.HandleFunc("/users/newstudent" , studentHandler.NewStudentHandler).Methods("POST")
+	excelHandler := handlers.NewExcelHandler(repository.NewExcelRepo(db))
+	router.HandleFunc("/user/excel" , excelHandler.GenerateExcelReportHandler).Methods("POST")
 	return router
 }

@@ -1,6 +1,8 @@
 package database
 
-func(q *Query) GenerateExcelReport() {
+import "github.com/VsenseTechnologies/biometric_http_server/internals/models"
+
+func(q *Query) GenerateExcelReport(unitid , start , end string) ([]models.Excel , error) {
 	query := `
 		SELECT 
     s.student_name, 
@@ -18,17 +20,33 @@ func(q *Query) GenerateExcelReport() {
 FROM 
     attendance a
 JOIN 
-    fingerprintdata s ON a.student_id = s.student_id  -- Join fingerprintdata for student details
+    fingerprintdata s ON a.student_id = s.student_id 
 JOIN 
-    biometric b ON a.unit_id = b.unit_id  -- Join biometric to get user_id
+    biometric b ON a.unit_id = b.unit_id
 JOIN 
-    times t ON b.user_id = t.user_id  -- Now join times using user_id from biometric
+    times t ON b.user_id = t.user_id 
 WHERE 
     a.date BETWEEN $1 AND $2 
-    AND a.unit_id = $3  -- Condition to filter by unit_id
+    AND a.unit_id = $3 
 ORDER BY 
     s.student_usn, a.date;
 
 	`;
-	q.db.Query("")
+	rows , err := q.db.Query(query , start , end , unitid )
+    if err != nil {
+        return nil , err
+    }
+    defer rows.Close()
+    var attendance models.Excel
+    var attendances []models.Excel
+    for rows.Next() {
+        if err := rows.Scan(&attendance.StudentName , &attendance.StudentUsn , &attendance.Date , &attendance.Status); err != nil {
+            return nil , err
+        }
+        attendances = append(attendances, attendance)
+    }
+    if rows.Err() != nil {
+        return nil , err
+    }
+    return attendances , nil
 }

@@ -61,7 +61,7 @@ func (q *Query) NewStudent(student models.Student) error {
 	if err != nil {
 		return err
 	}
-	_ , err = tx.Exec("INSERT INTO inserts(unit_id , student_unit_id , fingerprintdata) VALUES($1,$2,$3)" , student.UnitId , student.StudentUnitId , student.FingerprintData)
+	_ , err = tx.Exec("INSERT INTO inserts(unit_id , student_unit_id , fingerprint_data) VALUES($1,$2,$3)" , student.UnitId , student.StudentUnitId , student.FingerprintData)
 	if err != nil {
 		return err
 	}
