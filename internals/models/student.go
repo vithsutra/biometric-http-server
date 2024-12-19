@@ -1,6 +1,9 @@
 package models
 
-import "net/http"
+import (
+	"bytes"
+	"net/http"
+)
 
 type Student struct {
 	StudentId       string `json:"student_id,omitempty"`
@@ -21,5 +24,5 @@ type StudentInterface interface {
 	UpdateStudent(*http.Request) error
 	FetchStudentDetails(*http.Request) ([]Student, error)
 	FetchStudentLogHistory(*http.Request) ([]Student, error)
-	GenerateStudentAttendenceReport(*http.Request)
+	GenerateStudentAttendenceReport(*http.Request) (*bytes.Buffer , error)
 }

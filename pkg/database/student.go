@@ -100,10 +100,13 @@ func (q *Query) FetchStudentLogHistory(studentId string) ([]models.Student , err
 		}
 		logs = append(logs, log)
 	}
+	if res.Err() != nil {
+		return nil,err
+	}
 	return logs , nil
 }
 
-func (q *Query) DeleteStudent(student models.Student) error {
+func (q *Query) DeleteStudent(unitid , studentUnitId , studentid string) error {
 	tx , err := q.db.Begin()
 	defer func() {
 		if err != nil {
@@ -115,11 +118,20 @@ func (q *Query) DeleteStudent(student models.Student) error {
 	if err != nil {
 		return err
 	}
-	_ , err = tx.Exec("DELETE FROM fingerprintdata WHERE student_id=$1" , student.StudentId)
+	_ , err = tx.Exec("DELETE FROM fingerprintdata WHERE student_id=$1" , studentid)
 	if err != nil {
 		return err
 	}
-	_ , err = tx.Exec("INSERT INTO deletes(unit_id , student_unit_id) VALUES($1,$2)" , student.UnitId , student.StudentUnitId)
+	_ , err = tx.Exec("INSERT INTO deletes(unit_id , student_unit_id) VALUES($1,$2)" , unitid , studentUnitId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (q *Query) UpdateStudent(student models.Student) error {
+	query := fmt.Sprintf("UPDATE %s SET student_name=$1 , student_usn=$2 , department=$3 WHERE student_id=$4" , student.UnitId)
+	_ , err := q.db.Exec(query , student.StudentName , student.StudentUSN , student.Department , student.StudentId)
 	if err != nil {
 		return err
 	}
