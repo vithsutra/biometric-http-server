@@ -3,9 +3,9 @@ package models
 import "net/http"
 
 type Auth struct{
-	UserId string `json:"user_id"`
-	Name string `json:"user_name"`
-	Password string `json:"password"`
+	UserId string `json:"user_id,omitempty"`
+	Name string `json:"user_name,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type AuthInterface interface{

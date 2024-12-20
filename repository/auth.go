@@ -22,13 +22,12 @@ func NewAuthRepo(db *sql.DB) *AuthRepo {
 }
 
 func (ar *AuthRepo) Register(r *http.Request) (string , error) {
-	var vars = mux.Vars(r)["id"]
+	var userType = mux.Vars(r)["id"]
 	var newUser models.Auth
 
 	if err := utils.Decode(r , &newUser); err != nil {
 		return "" , err
 	}
-
 	newUser.UserId = uuid.NewString()
 	hash , err := utils.HashPassword(newUser.Password)
 	if err != nil {
@@ -42,7 +41,7 @@ func (ar *AuthRepo) Register(r *http.Request) (string , error) {
 	}
 
 	query := database.NewQuery(ar.db)
-	if err := query.Register(newUser , vars); err != nil {
+	if err := query.Register(newUser , userType); err != nil {
 		return "",err
 	}
 
@@ -50,7 +49,7 @@ func (ar *AuthRepo) Register(r *http.Request) (string , error) {
 }
 
 func (ar *AuthRepo) Login(r *http.Request) (string , error) {
-	var vars = mux.Vars(r)["id"]
+	var userType = mux.Vars(r)["id"]
 	var reqUser models.Auth
 
 	if err := utils.Decode(r , &reqUser); err != nil {
@@ -58,7 +57,7 @@ func (ar *AuthRepo) Login(r *http.Request) (string , error) {
 	}
 
 	query := database.NewQuery(ar.db)
-	dbUser  , err := query.Login(reqUser , vars)
+	dbUser  , err := query.Login(reqUser , userType)
 	if err != nil {
 		return "",err
 	}

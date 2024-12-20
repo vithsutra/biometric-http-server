@@ -23,6 +23,7 @@ func (eh *ExcelHandler) GenerateExcelReportHandler(w http.ResponseWriter , r *ht
 	file , name ,err := eh.excelRepo.GenerateExcelReport(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
 		utils.Encode(w , map[string]string{"message" : err.Error()})
 		return
 	}

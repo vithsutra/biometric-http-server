@@ -26,7 +26,7 @@ func GeneratePDF(students []models.Student) (*bytes.Buffer, error) {
 	pdf.AddPage()
 
 	// Add header image
-	headerImagePath := "header.png"
+	headerImagePath := "pkg/utils/header.png"
 	pdf.ImageOptions(headerImagePath, 10, 10, 190, 25, false, gofpdf.ImageOptions{ImageType: "PNG", ReadDpi: true}, 0, "")
 	pdf.Ln(25)
 
@@ -41,7 +41,7 @@ func GeneratePDF(students []models.Student) (*bytes.Buffer, error) {
 	pdf.CellFormat(20, 10, "S.No", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(60, 10, "Student Name", "1", 0, "C", true, 0, "")
 	pdf.CellFormat(50, 10, "USN", "1", 0, "C", true, 0, "")
-	pdf.CellFormat(50, 10, "Presence", "1", 0, "C", true, 0, "")
+	pdf.CellFormat(60, 10, "Presence", "1", 0, "C", true, 0, "")
 	pdf.Ln(-1)
 
 	// Table Data

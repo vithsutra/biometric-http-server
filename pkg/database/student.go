@@ -78,7 +78,7 @@ func (q *Query) FetchStudentDetails(unitId string) ([]models.Student,error) {
 	var studentDetails models.Student
 	var studentsDetails []models.Student
 	for res.Next() {
-		if err := res.Scan(&studentDetails.StudentId , &studentDetails.StudentUSN , &studentDetails.StudentUnitId , &studentDetails.Department); err != nil {
+		if err := res.Scan(&studentDetails.StudentId , &studentDetails.StudentName , &studentDetails.StudentUSN , &studentDetails.StudentUnitId , &studentDetails.Department); err != nil {
 			return nil,err
 		}
 		studentsDetails = append(studentsDetails, studentDetails)
