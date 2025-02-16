@@ -12,20 +12,20 @@ import (
 func Start(db *sql.DB) {
 	// Creating new server struct
 	server := &http.Server{
-		Addr: os.Getenv("PORT"),
+		Addr:    os.Getenv("SERVER_ADDRESS"),
 		Handler: InitilizeHttpRouters(db),
 	}
 
 	// Initilizing database with tables
 	query := database.NewQuery(db)
 	if err := query.InitilizeDatabase(); err != nil {
-		log.Fatalf("Unable to initilize database: %v" , err)
+		log.Fatalf("Unable to initilize database: %v", err)
 	}
 
 	// Running the server
-	log.Printf("Server is running at port %s" , os.Getenv("PORT"))
+	log.Printf("Server is running at port %s", os.Getenv("SERVER_ADDRESS"))
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Fatalf("Unable to start server: %v" , err)
+		log.Fatalf("Unable to start server: %v", err)
 	}
 }
