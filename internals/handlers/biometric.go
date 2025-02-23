@@ -1,51 +1,92 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
-	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
-type BiometricHandler struct {
-	biometricRepo models.BiometricInterface
+type biometricHandler struct {
+	repo models.BiometricInterface
 }
 
-func NewBiometricHandler(biometricRepo models.BiometricInterface) *BiometricHandler {
-	return &BiometricHandler{
-		biometricRepo,
+func NewBiometricHandler(repo models.BiometricInterface) *biometricHandler {
+	return &biometricHandler{
+		repo,
 	}
 }
 
-func (bh *BiometricHandler) NewBiometricDeviceHandler(w http.ResponseWriter , r *http.Request) {
-	err := bh.biometricRepo.NewBiometricDevice(r)
-	if err != nil {
+func (h *biometricHandler) CreateBiometricDeviceHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := h.repo.CreateBiometricDevice(r); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message" : err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message" : "Success..."})
+	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device created successfully"})
 }
 
-func (bh *BiometricHandler) FetchAllBiometricsHandler(w http.ResponseWriter , r *http.Request) {
-	data , err := bh.biometricRepo.FetchAllBiometrics(r)
+func (h *biometricHandler) GetBiometricDevicesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	units, err := h.repo.GetBiometricDevices(r)
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message" : err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if units == nil {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"units": []interface{}{},
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string][]*models.Biometric{
+		"units": units,
+	})
+}
+
+func (h *biometricHandler) UpdateBiometricLabelHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := h.repo.UpdateBiometricLabel(r); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device label updated successfully"})
+}
+
+func (h *biometricHandler) DeleteBiometricDeviceHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := h.repo.DeleteBiometricDevice(r); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device deleted successfully"})
+}
+
+func (h *biometricHandler) ClearBiometricDeviceDataHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := h.repo.ClearBiometricDeviceData(r); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string][]models.Biometric{"devices" : data})
-}
-
-func (bh *BiometricHandler) DeleteBiometricMachineHandler(w http.ResponseWriter , r *http.Request) {
-	err := bh.biometricRepo.DeleteBiometricMachine(r)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message" : err.Error()})
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message" : "Success..."})
+	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device data cleared successfully"})
 }

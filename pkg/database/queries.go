@@ -15,22 +15,24 @@ func NewQuery(db *sql.DB) *Query {
 	}
 }
 
-func(q *Query) InitilizeDatabase() error {
+func (q *Query) InitilizeDatabase() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS admin (
-			user_id VARCHAR(100) PRIMARY KEY, 
-			user_name VARCHAR(50) NOT NULL UNIQUE, 
-			password VARCHAR(100) NOT NULL
+			user_id VARCHAR(255) PRIMARY KEY, 
+			user_name VARCHAR(255) NOT NULL UNIQUE, 
+			password VARCHAR(255) NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS users (
-			user_id VARCHAR(100) PRIMARY KEY, 
-			user_name VARCHAR(50) NOT NULL UNIQUE, 
-			password VARCHAR(100) NOT NULL
+			user_id VARCHAR(255) PRIMARY KEY, 
+			user_name VARCHAR(255) NOT NULL UNIQUE, 
+			email VARCHAR(255) NOT NULL UNIQUE,
+			password VARCHAR(255) NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS biometric (
 			user_id VARCHAR(100), 
 			unit_id VARCHAR(50) PRIMARY KEY, 
 			online BOOLEAN NOT NULL, 
+			label VARCHAR(100) NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS fingerprintdata (
@@ -51,13 +53,13 @@ func(q *Query) InitilizeDatabase() error {
 			FOREIGN KEY (student_id) REFERENCES fingerprintdata(student_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS times (
-			user_id VARCHAR(200), 
-			morning_start VARCHAR(20), 
-			morning_end VARCHAR(20), 
-			afternoon_start VARCHAR(20), 
-			afternoon_end VARCHAR(20), 
-			evening_start VARCHAR(20), 
-			evening_end VARCHAR(20), 
+			user_id VARCHAR(255), 
+			morning_start VARCHAR(255), 
+			morning_end VARCHAR(255), 
+			afternoon_start VARCHAR(255), 
+			afternoon_end VARCHAR(255), 
+			evening_start VARCHAR(255), 
+			evening_end VARCHAR(255), 
 			FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS inserts(
@@ -69,9 +71,14 @@ func(q *Query) InitilizeDatabase() error {
 			unit_id VARCHAR(200),
 			student_unit_id VARCHAR(200)
 		)`,
+		`CREATE TABLE IF NOT EXISTS otps (
+			id SERIAL PRIMARY KEY,
+			email VARCHAR(255) UNIQUE NOT NULL,
+			otp VARCHAR(10) NOT NULL
+ 		)`,
 	}
 
-	tx , err := q.db.Begin()
+	tx, err := q.db.Begin()
 	if err != nil {
 		return err
 	}
@@ -79,18 +86,17 @@ func(q *Query) InitilizeDatabase() error {
 	defer func() {
 		if err != nil {
 			tx.Rollback()
-		}else {
+		} else {
 			tx.Commit()
 			log.Println("Database initilized successfully")
 		}
-	} ()
+	}()
 
-	for _ , query := range queries {
-		_ , err = tx.Exec(query)
+	for _, query := range queries {
+		_, err = tx.Exec(query)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
-

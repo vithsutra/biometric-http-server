@@ -1,96 +1,104 @@
 package repository
 
 import (
-	"bytes"
 	"database/sql"
-	"fmt"
+	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
-	"net/smtp"
 	"os"
-	"text/template"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
+	"github.com/go-playground/validator"
+	"github.com/google/uuid"
 )
 
-type AdminRepo struct{
+type adminRepo struct {
 	db *sql.DB
 }
 
-func NewAdminRepo(db *sql.DB) *AdminRepo {
-	return &AdminRepo{
+func NewAdminRepo(db *sql.DB) *adminRepo {
+	return &adminRepo{
 		db,
 	}
 }
 
-func (ar *AdminRepo) FetchAllUsers() ([]models.Admin,error) {
-	query := database.NewQuery(ar.db)
-	users , err := query.FetchAllUsers()
-	if err != nil {
-		return nil , err
+func (repo *adminRepo) CreateAdmin(r *http.Request) (bool, error) {
+	var adminRegisterRequest models.AdminRegisterRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&adminRegisterRequest); err != nil {
+		return false, errors.New("invalid json format")
 	}
-	return users , nil
+
+	validate := validator.New()
+
+	if err := validate.Struct(adminRegisterRequest); err != nil {
+		return false, errors.New("invalid input format")
+	}
+
+	rootPassword := os.Getenv("ROOT_PASSWORD")
+
+	if rootPassword == "" {
+		log.Println("ROOT_PASSWORD env is empty or missing")
+		return false, errors.New("internal server error")
+	}
+
+	if adminRegisterRequest.RootPassword != rootPassword {
+		return false, nil
+	}
+
+	var admin models.Admin
+
+	admin.UserId = uuid.NewString()
+	admin.UserName = adminRegisterRequest.UserName
+
+	hashedPassword, err := utils.HashPassword(adminRegisterRequest.Password)
+
+	if err != nil {
+		log.Println(err)
+		return false, errors.New("internal server error")
+	}
+
+	admin.Password = hashedPassword
+
+	query := database.NewQuery(repo.db)
+
+	if err := query.CreateAdmin(&admin); err != nil {
+		log.Println(err)
+		return false, errors.New("internal server error")
+	}
+
+	return true, nil
 }
-func (ar *AdminRepo) GiveUserAccess(r *http.Request) error {
-	var user models.Admin
-	if err := utils.Decode(r, &user); err != nil {
-		return err
+
+func (repo *adminRepo) AdminLogin(r *http.Request) (bool, error) {
+	var adminLoginRequest models.AdminLoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&adminLoginRequest); err != nil {
+		return false, errors.New("invalid json format")
 	}
-	query := database.NewQuery(ar.db)
-	dbusr, err := query.GiveUserAccess(user.UserId)
+
+	validate := validator.New()
+
+	if err := validate.Struct(adminLoginRequest); err != nil {
+		return false, errors.New("invalid request format")
+	}
+
+	query := database.NewQuery(repo.db)
+
+	password, err := query.GetAdminPassword(adminLoginRequest.UserName)
+
 	if err != nil {
-		return err
+		log.Println(err)
+		return false, err
 	}
-	if err := utils.CheckPassword(dbusr.Password, user.Password); err != nil {
-		return err
+
+	if err := utils.CheckPassword(password, adminLoginRequest.Password); err != nil {
+		return false, nil
 	}
-	go func(user models.Admin, dbusr models.Admin) {
-		tmpl, err := template.ParseFiles("pkg/templates/email.layout.tmpl")
-		if err != nil {
-			log.Printf("Unable to parse email template: %v\n" , err)
-			return
-		}
 
-		data := struct {
-			Subject  string
-			UserName string
-			Password string
-		}{
-			Subject:  "Access Granted to VSENSE Fingerprint Software",
-			UserName: dbusr.UserName,
-			Password: user.Password,
-		}
+	return true, nil
 
-		var emailBody bytes.Buffer
-		if err := tmpl.Execute(&emailBody, data); err != nil {
-			log.Printf("Error executing email template: %v\n", err)
-			return
-		}
-
-		mailMessage := []byte(fmt.Sprintf(
-			"Subject: %s\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-			data.Subject, emailBody.String(),
-		))
-
-		mailDetails := smtp.PlainAuth(
-			"", 
-			os.Getenv("SMTP_USERNAME"), 
-			os.Getenv("SMTP_PASSWORD"), 
-			os.Getenv("SMTP_SERVICE"),
-		)
-
-		err = smtp.SendMail(
-			"smtp.gmail.com:587",
-			mailDetails,
-			os.Getenv("SMTP_USERNAME"),
-			[]string{user.Email},
-			mailMessage,
-		)
-		if err != nil {
-			log.Printf("Error sending email: %v\n", err)
-		}
-	}(user, dbusr)
-	return nil
 }

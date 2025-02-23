@@ -1,97 +1,118 @@
 package repository
 
 import (
-	"bytes"
 	"database/sql"
+	"encoding/json"
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
-	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
+	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
-type StudentRepo struct {
+type studentRepo struct {
 	db *sql.DB
 }
 
-func NewStudentRepo(db *sql.DB) *StudentRepo {
-	return &StudentRepo{
+func NewStudentRepo(db *sql.DB) *studentRepo {
+	return &studentRepo{
 		db,
 	}
 }
 
-func (sr *StudentRepo) GenerateStudentAttendenceReport(r *http.Request) (*bytes.Buffer, error) {
-	var details models.Student
-	if err := utils.Decode(r , &details); err != nil {
-		return nil,err
-	}
-	query := database.NewQuery(sr.db)
-	data ,err := query.GenerateStudentAttendenceReport(details.UnitId , details.Date)
-	if err != nil {
-		return nil,err
-	}
-	buf , err := utils.GeneratePDF(data)
-	if err != nil {
-		return nil , err
-	}
-	return buf , nil
-}
+func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
+	var createStudentRequest models.CreateStudentRequest
 
-func(sr *StudentRepo) NewStudent(r *http.Request) error {
-	var newStudent models.Student
-	if err := utils.Decode(r , &newStudent); err != nil {
-		return err
+	if err := json.NewDecoder(r.Body).Decode(&createStudentRequest); err != nil {
+		return errors.New("invalid json format")
 	}
-	newStudent.StudentId = uuid.NewString()
-	query := database.NewQuery(sr.db)
-	if err := query.NewStudent(newStudent); err != nil {
-		return err
-	}
-	return nil
-}
 
-func (sr *StudentRepo) DeleteStudent(r *http.Request) error {
-	var studentId string = mux.Vars(r)["studentid"]
-	var unitId string = mux.Vars(r)["unitid"]
-	var studentUnitID string = mux.Vars(r)["studentunitid"]
-	query := database.NewQuery(sr.db)
-	err := query.DeleteStudent(unitId , studentUnitID , studentId)
-	if err != nil {
-		return err
+	validate := validator.New()
+	if err := validate.Struct(createStudentRequest); err != nil {
+		return errors.New("invalid request format")
 	}
-	return nil
-}
 
-func (sr *StudentRepo) UpdateStudent(r *http.Request) error {
 	var student models.Student
-	if err := utils.Decode(r , student); err != nil {
-		return err
+
+	student.StudentId = uuid.NewString()
+	student.StudentUnitId = createStudentRequest.StudentUnitId
+	student.StudentName = createStudentRequest.StudentName
+	student.StudentUsn = createStudentRequest.StudentUsn
+	student.Department = createStudentRequest.Department
+
+	query := database.NewQuery(repo.db)
+
+	if err := query.CreateNewStudent(&student, createStudentRequest.UnitId, createStudentRequest.FingerprintData); err != nil {
+		log.Println(err)
+		return errors.New("internal server error")
 	}
-	query := database.NewQuery(sr.db)
-	if err := query.UpdateStudent(student); err != nil {
-		return err
-	}
+
 	return nil
 }
 
-func (sr *StudentRepo) FetchStudentDetails(r *http.Request) ([]models.Student , error) {
-	var unitId = mux.Vars(r)["unitid"]
-	query := database.NewQuery(sr.db)
-	data , err := query.FetchStudentDetails(unitId)
-	if err != nil {
-		return nil,err
+func (repo *studentRepo) UpdateStudentDetails(r *http.Request) error {
+	var studentUpdateRequest models.UpdateStudentRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&studentUpdateRequest); err != nil {
+		return errors.New("invalid json format")
 	}
-	return data, nil
+
+	validate := validator.New()
+
+	if err := validate.Struct(studentUpdateRequest); err != nil {
+		return errors.New("invalid request format")
+	}
+
+	query := database.NewQuery(repo.db)
+
+	if err := query.UpdateStudent(studentUpdateRequest.UnitId, studentUpdateRequest.StudentId, studentUpdateRequest.StudentName, studentUpdateRequest.StudentUsn, studentUpdateRequest.Department); err != nil {
+		log.Println(err)
+		return errors.New("internal server error")
+	}
+
+	return nil
 }
 
-func (sr *StudentRepo) FetchStudentLogHistory(r *http.Request) ([]models.Student , error) {
-	var studentId = mux.Vars(r)["studentid"]
-	query := database.NewQuery(sr.db)
-	data , err := query.FetchStudentLogHistory(studentId)
-	if err != nil {
-		return nil , err
+func (repo *studentRepo) DeleteStudent(r *http.Request) error {
+	var deleteStudentRequest models.DeleteStudentRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&deleteStudentRequest); err != nil {
+		return errors.New("invalid json format")
 	}
-	return data , nil
+
+	validate := validator.New()
+
+	if err := validate.Struct(deleteStudentRequest); err != nil {
+		return errors.New("invalid request format")
+	}
+
+	query := database.NewQuery(repo.db)
+
+	if err := query.DeleteStudent(deleteStudentRequest.UnitId, deleteStudentRequest.StudentId, deleteStudentRequest.StudentUnitId); err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, error) {
+	vars := mux.Vars(r)
+
+	unitId := vars["unit_id"]
+
+	query := database.NewQuery(repo.db)
+
+	students, err := query.GetStudentDetails(unitId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	return students, nil
 }

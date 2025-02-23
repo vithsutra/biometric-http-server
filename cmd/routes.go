@@ -10,25 +10,38 @@ import (
 )
 
 func InitilizeHttpRouters(db *sql.DB) http.Handler {
-	router := mux.NewRouter() 
-	authHandler := handlers.NewAuthHandler(repository.NewAuthRepo(db))
-	router.HandleFunc("/{id}/register" , authHandler.RegisterHandler).Methods("POST")
-	router.HandleFunc("/{id}/login" , authHandler.LoginHandler).Methods("POST")
+	router := mux.NewRouter()
+
 	adminHandler := handlers.NewAdminHandler(repository.NewAdminRepo(db))
-	router.HandleFunc("/admin/getusers" , adminHandler.FetchAllUsersHandler).Methods("GET")
-	router.HandleFunc("/admin/giveaccess" , adminHandler.GiveUserAccessHandler).Methods("POST")
+	userHandler := handlers.NewUserHandler(repository.NewUserRepo(db))
 	biometricHandler := handlers.NewBiometricHandler(repository.NewBiometricRepo(db))
-	router.HandleFunc("/admin/devices/{userid}" , biometricHandler.FetchAllBiometricsHandler).Methods("GET")
-	router.HandleFunc("/admin/device/delete/{unitid}" , biometricHandler.DeleteBiometricMachineHandler).Methods("GET")
-	router.HandleFunc("/admin/adddevice" , biometricHandler.NewBiometricDeviceHandler).Methods("POST")
 	studentHandler := handlers.NewStudentHandler(repository.NewStudentRepo(db))
-	router.HandleFunc("/users/getstudents/{unitid}" , studentHandler.FetchStudentDetails).Methods("GET")
-	router.HandleFunc("/users/getlogs/{studentid}" , studentHandler.FetchStudentLogHistoryHandler).Methods("GET")
-	router.HandleFunc("/users/delete/{unitid}/{studentid}/{studentunitid}" , studentHandler.DeleteStudentHandler).Methods("GET")
-	router.HandleFunc("/users/update" , studentHandler.UpdateStudentHandler).Methods("POST")
-	router.HandleFunc("/users/generatepdf" , studentHandler.GenerateStudentAttendenceReportHandler).Methods("POST")
-	router.HandleFunc("/users/newstudent" , studentHandler.NewStudentHandler).Methods("POST")
-	excelHandler := handlers.NewExcelHandler(repository.NewExcelRepo(db))
-	router.HandleFunc("/user/excel" , excelHandler.GenerateExcelReportHandler).Methods("POST")
+
+	router.HandleFunc("/root/create/admin", adminHandler.CreateAdminHandler).Methods("POST")
+
+	router.HandleFunc("/admin/login", adminHandler.AdminLogin).Methods("POST")
+	router.HandleFunc("/admin/create/user", userHandler.CreateUserHandler).Methods("POST")
+	router.HandleFunc("/admin/access/user", userHandler.GiveUserAccessHandler).Methods("POST")
+	router.HandleFunc("/admin/get/users", userHandler.GetAllUsersHandler).Methods("GET")
+
+	router.HandleFunc("/user/login", userHandler.UserLoginHandler).Methods("POST")
+	router.HandleFunc("/user/update/password", userHandler.UpdateNewPasswordHandler).Methods("POST")
+	router.HandleFunc("/user/forgotpassword", userHandler.ForgotPasswordHandler).Methods("POST")
+	router.HandleFunc("/user/validate/otp", userHandler.ValidateOtpHandler).Methods("POST")
+	router.HandleFunc("/user/update/time", userHandler.UpdateTime).Methods("POST")
+	router.HandleFunc("/user/unit_ids/{user_id}", userHandler.GetBiometricDevicesForRegisterForm).Methods("GET")
+	router.HandleFunc("/user/get/student_unit_ids/{unit_id}", userHandler.GetStudentUnitIdsForRegisterForm).Methods("GET")
+
+	router.HandleFunc("/user/create/biometric_device", biometricHandler.CreateBiometricDeviceHandler).Methods("POST")
+	router.HandleFunc("/user/delete/biometric_device/{unit_id}", biometricHandler.DeleteBiometricDeviceHandler).Methods("GET")
+	router.HandleFunc("/user/update/biometric_device/label", biometricHandler.UpdateBiometricLabelHandler).Methods("POST")
+	router.HandleFunc("/user/get/biometric_device/{user_id}", biometricHandler.GetBiometricDevicesHandler).Methods("GET")
+	router.HandleFunc("/user/clear/biometric_device/data", biometricHandler.ClearBiometricDeviceDataHandler).Methods("POST")
+
+	router.HandleFunc("/user/create/student", studentHandler.CreateNewStudentHandler).Methods("POST")
+	router.HandleFunc("/user/update/student", studentHandler.UpdateStudentDetailsHandler).Methods("POST")
+	router.HandleFunc("/user/get/student/{unit_id}", studentHandler.GetStudentDetailsHandler).Methods("GET")
+	router.HandleFunc("/user/delete/student", studentHandler.DeleteStudentHandler).Methods("POST")
+
 	return router
 }

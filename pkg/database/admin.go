@@ -2,32 +2,19 @@ package database
 
 import "github.com/VsenseTechnologies/biometric_http_server/internals/models"
 
-
-
-func (q *Query) GiveUserAccess(userId string) (models.Admin , error) {
-	var user models.Admin
-	if err := q.db.QueryRow("SELECT user_name,password FROM users WHERE user_id=$1", userId).Scan(&user.UserName , &user.Password); err != nil {
-		return user,err
-	}
-	return user , nil
+func (q *Query) CreateAdmin(admin *models.Admin) error {
+	query := `INSERT INTO admin (user_id,user_name,password) VALUES ($1,$2,$3)`
+	_, err := q.db.Exec(query, admin.UserId, admin.UserName, admin.Password)
+	return err
 }
 
-func (q *Query) FetchAllUsers() ([]models.Admin , error) {
-	res , err := q.db.Query("SELECT user_id , user_name FROM users")
-	if err != nil {
-		return nil,err
+func (q *Query) GetAdminPassword(userName string) (string, error) {
+	query := `SELECT password FROM admin WHERE user_name=$1`
+
+	var adminPassword string
+	if err := q.db.QueryRow(query, userName).Scan(&adminPassword); err != nil {
+		return "", err
 	}
-	defer res.Close()
-	var user models.Admin
-	var users []models.Admin
-	for res.Next(){
-		if err := res.Scan(&user.UserId , &user.UserName); err != nil {
-			return nil , err
-		}
-		users = append(users, user)
-	}
-	if res.Err() != nil {
-		return nil , err
-	}
-	return users , nil
+
+	return adminPassword, nil
 }

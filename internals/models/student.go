@@ -1,28 +1,41 @@
 package models
 
-import (
-	"bytes"
-	"net/http"
-)
+import "net/http"
+
+type CreateStudentRequest struct {
+	StudentUnitId   string `json:"student_unit_id" validate:"required"`
+	StudentName     string `json:"student_name" validate:"required"`
+	StudentUsn      string `json:"student_usn" validate:"required"`
+	Department      string `json:"department" validate:"required"`
+	UnitId          string `json:"unit_id" validate:"required"`
+	FingerprintData string `json:"fingerprint_data" validate:"required"`
+}
+
+type UpdateStudentRequest struct {
+	UnitId      string `json:"unit_id" validate:"required"`
+	StudentId   string `json:"student_id" validate:"required"`
+	StudentName string `json:"student_name" validate:"required"`
+	StudentUsn  string `json:"student_usn" validate:"required"`
+	Department  string `json:"department" validate:"required"`
+}
+
+type DeleteStudentRequest struct {
+	UnitId        string `json:"unit_id" validate:"required"`
+	StudentId     string `json:"student_id" validate:"required"`
+	StudentUnitId string `json:"student_unit_id" validate:"required"`
+}
 
 type Student struct {
-	StudentId       string `json:"student_id,omitempty"`
-	StudentUnitId   string `json:"student_unit_id,omitempty"`
-	StudentName     string `json:"student_name,omitempty"`
-	StudentUSN      string `json:"student_usn,omitempty"`
-	Department      string `json:"department,omitempty"`
-	UnitId          string `json:"unit_id,omitempty"`
-	FingerprintData string `json:"fingerprint_data,omitempty"`
-	Date            string `json:"date,omitempty"`
-	LoginTime       string `json:"login,omitempty"`
-	LogoutTime      string `json:"logout,omitempty"`
+	StudentId     string `json:"student_id"`
+	StudentUnitId string `json:"student_unit_id"`
+	StudentName   string `json:"student_name"`
+	StudentUsn    string `json:"student_usn"`
+	Department    string `json:"department"`
 }
 
 type StudentInterface interface {
-	NewStudent(*http.Request) error
-	DeleteStudent(*http.Request) error
-	UpdateStudent(*http.Request) error
-	FetchStudentDetails(*http.Request) ([]Student, error)
-	FetchStudentLogHistory(*http.Request) ([]Student, error)
-	GenerateStudentAttendenceReport(*http.Request) (*bytes.Buffer , error)
+	CreateNewStudent(r *http.Request) error
+	UpdateStudentDetails(r *http.Request) error
+	DeleteStudent(r *http.Request) error
+	GetStudentDetails(r *http.Request) ([]*Student, error)
 }

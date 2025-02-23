@@ -2,14 +2,24 @@ package models
 
 import "net/http"
 
-type Admin struct{
-	UserId string `json:"user_id"`
-	UserName string `json:"user_name"`
-	Email string `json:"email,omitempty"`
-	Password string `json:"password,omitempty"`
+type AdminRegisterRequest struct {
+	RootPassword string `json:"root_password" validate:"required"`
+	UserName     string `json:"user_name" validate:"required"`
+	Password     string `json:"password" validate:"required"`
 }
 
-type AdminInterface interface{
-	FetchAllUsers() ([]Admin , error)
-	GiveUserAccess(*http.Request) error
+type Admin struct {
+	UserId   string
+	UserName string
+	Password string
+}
+
+type AdminLoginRequest struct {
+	UserName string `json:"user_name" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+type AdminInterface interface {
+	CreateAdmin(r *http.Request) (bool, error)
+	AdminLogin(r *http.Request) (bool, error)
 }

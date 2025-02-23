@@ -1,93 +1,78 @@
 package handlers
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
-	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
-type StudentHandler struct {
-	studentRepo models.StudentInterface
+type studentHandler struct {
+	repo models.StudentInterface
 }
 
-func NewStudentHandler(studentRepo models.StudentInterface) *StudentHandler {
-	return &StudentHandler{
-		studentRepo,
+func NewStudentHandler(repo models.StudentInterface) *studentHandler {
+	return &studentHandler{
+		repo,
 	}
 }
 
+func (h *studentHandler) CreateNewStudentHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := h.repo.CreateNewStudent(r); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
 
-func (sh *StudentHandler) GenerateStudentAttendenceReportHandler(w http.ResponseWriter, r *http.Request) {
-    buff, err := sh.studentRepo.GenerateStudentAttendenceReport(r)
-    if err != nil {
-        w.WriteHeader(http.StatusBadRequest)
-        utils.Encode(w, map[string]string{"message": err.Error()})
-        return
-    }
-
-    w.Header().Set("Content-Type", "application/pdf")
-    w.Header().Set("Content-Disposition", "inline; filename=attendance_report.pdf")
-    w.Header().Set("Content-Length", fmt.Sprintf("%d", buff.Len()))
-
-    if _, err := w.Write(buff.Bytes()); err != nil {
-        w.WriteHeader(http.StatusInternalServerError)
-        utils.Encode(w, map[string]string{"message": "Failed to send PDF"})
-        return
-    }
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "student created successfully"})
 }
 
-func (sh *StudentHandler) DeleteStudentHandler(w http.ResponseWriter , r *http.Request) {
-	if err := sh.studentRepo.DeleteStudent(r); err != nil {
+func (h *studentHandler) UpdateStudentDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := h.repo.UpdateStudentDetails(r); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message":"Success"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "student details updated successfully"})
 }
 
-func (sh *StudentHandler) UpdateStudentHandler(w http.ResponseWriter , r *http.Request) {
-	if err := sh.studentRepo.UpdateStudent(r); err != nil {
+func (h *studentHandler) DeleteStudentHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := h.repo.DeleteStudent(r); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message":"Success"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "student deleted successfully"})
 }
 
-func (sh *StudentHandler) NewStudentHandler(w http.ResponseWriter , r *http.Request) {
-	if err := sh.studentRepo.NewStudent(r); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message":"Success"})
-}
+func (h *studentHandler) GetStudentDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	students, err := h.repo.GetStudentDetails(r)
 
-func (sh *StudentHandler) FetchStudentDetails(w http.ResponseWriter , r *http.Request) {
-	data , err := sh.studentRepo.FetchStudentDetails(r)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string][]models.Student{"students":data})
-}
 
-func (sh *StudentHandler) FetchStudentLogHistoryHandler(w http.ResponseWriter , r *http.Request) {
-	data , err := sh.studentRepo.FetchStudentLogHistory(r)
-	if err != nil {
+	if students == nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"students": []interface{}{},
+		})
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string][]models.Student{"logs":data})
+	json.NewEncoder(w).Encode(map[string][]*models.Student{
+		"students": students,
+	})
+
 }
-
-

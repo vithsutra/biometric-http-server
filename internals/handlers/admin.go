@@ -1,39 +1,60 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
-	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
-type AdminHandler struct{
+type adminHandler struct {
 	adminInterface models.AdminInterface
 }
 
-func NewAdminHandler(adminInterface models.AdminInterface) *AdminHandler {
-	return &AdminHandler{
+func NewAdminHandler(adminInterface models.AdminInterface) *adminHandler {
+	return &adminHandler{
 		adminInterface,
 	}
 }
 
-func (ah *AdminHandler) FetchAllUsersHandler(w http.ResponseWriter , r *http.Request){
-	users , err := ah.adminInterface.FetchAllUsers()
+func (h *adminHandler) CreateAdminHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	isRootPasswordCorrect, err := h.adminInterface.CreateAdmin(r)
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+
+	if !isRootPasswordCorrect {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "incorrect root password"})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string][]models.Admin{"users":users})
+	json.NewEncoder(w).Encode(map[string]string{"message": "admin created successfully"})
 }
-func (ah *AdminHandler) GiveUserAccessHandler(w http.ResponseWriter , r *http.Request){
-	err := ah.adminInterface.GiveUserAccess(r)
+
+func (h *adminHandler) AdminLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	isPasswordCorrect, err := h.adminInterface.AdminLogin(r)
+
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		utils.Encode(w , map[string]string{"message":err.Error()})
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+
+	if !isPasswordCorrect {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "incorrect password"})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	utils.Encode(w , map[string]string{"message":"Email sent successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "login successfull"})
 }
