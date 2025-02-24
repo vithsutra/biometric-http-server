@@ -14,7 +14,7 @@ func init() {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalln("missing the .env file", err)
 		}
-		log.Println("running in development mode")
+		log.Println("running in development mode..")
 		log.Println(".env file loaded successfully")
 		return
 	}
