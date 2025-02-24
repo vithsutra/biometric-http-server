@@ -1,0 +1,73 @@
+name: Biometric HTTP Server CI/CD
+
+on: 
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build HTTP Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate With Dockerhub
+        run: echo ${{ secretes.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secretes.DOCKER_HUB_USERNAME }} --password-stdin
+
+      - name: Build and Push Docker Image
+        run: |
+          IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
+          docker build -t $IMAGE_NAME
+          docker push $IMAGE_NAME
+
+  deploy:
+    name: Deploy Docker Image to GCE
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Create .env file
+          run: |
+            echo "SERVER_ADDRESS=${{ secretes.SERVER_ADDRESS }}" >> .env
+            echo "DB_URL=${{ secretes.DB_URL }}" >> .env
+            echo "ROOT_PASSWORD=${{ secretes.ROOT_PASSWORD }}" >> .env
+            echo "SMTP_HOST=${{ secretes.SMTP_HOST }}" >> .env
+            echo "SMTP_PORT=${{ secretes.SMTP_PORT }}" >> .env
+            echo "HOST_EMAIL=${{ secretes.HOST_EMAIL }}" >> .env
+            echo "APP_PASSWORD=${{ secretes.APP_PASSWORD }}" >> .env
+
+      - name: Setup Deploy Environment in GCE Instance
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.GCP_INSTANCE_HOST }}
+          username: ${{ secrets.GCP_INSTANCE_USERNAME }}
+          key: ${{ secretes.GCE_SSH_PRIVATE_KEY }}
+
+          scripts: |
+            echo "Connected to VM"
+            mkdir -p ~/biometric/biometric-http-server-deployment
+
+      - name: Upload .env to GCE Instance
+        run: |
+          echo ${{ secretes.GCE_SSH_PRIVATE_KEY }} > biometric_ssh_key
+          scp -o StrictHostKeyChecking=no -i biometric_ssh_key .env ${{ secrets.GCP_INSTANCE_USERNAME }}@${{ secrets.GCP_INSTANCE_HOST }}:~/biometric/biometric-http-server-deployment/.env
+
+      - name: Deploying Docker Image on GCE Instance
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secretes.GCP_INSTANCE_HOST }}
+          username: ${{ secretes.GCP_INSTANCE_USERNAME }}
+          key: ${{ secretes.GCE_SSH_PRIVATE_KEY }}
+          script: |
+            IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
+            docker pull $IMAGE_NAME
+            docker ps | grep vithsutratechnologies/biometric-http-server:1.0.0 | awk '{print $1}' | xargs -I {} docker kill {} 
+            docker ps -a | grep vithsutratechnologies/biometric-http-server:1.0.0 | awk '{print $1}' | xargs -I {} docker rm {}
+            docker run -d -p "8080:8080" --env-file ~/biometric/biometric-http-server-deployment/.env $IMAGE_NMAE
+
+            
+
+
