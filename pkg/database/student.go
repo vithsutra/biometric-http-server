@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
+	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
 // 	_ , err = tx.Exec("INSERT INTO fingerprintdata(student_id , student_unit_id , unit_id , fingerprint) VALUES($1 , $2 , $3 , $4)" , student.StudentId , student.StudentUnitId , student.UnitId , student.FingerprintData)
@@ -116,4 +117,47 @@ func (q *Query) GetStudentDetails(unitId string) ([]*models.Student, error) {
 	}
 
 	return students, nil
+}
+
+func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog, error) {
+	query := `SELECT date,login,logout FROM attendance WHERE student_id=$1`
+
+	rows, err := q.db.Query(query, studentId)
+
+	var studentLogs []*models.StudentAttendanceLog
+
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var attendanceLog models.StudentAttendanceLog
+
+		if err := rows.Scan(&attendanceLog.Date, &attendanceLog.LoginTime, &attendanceLog.LogoutTime); err != nil {
+			return nil, err
+		}
+
+		if attendanceLog.LoginTime != "pending" {
+			t1, err := utils.ConvertTo12HourFormat(attendanceLog.LoginTime)
+
+			if err != nil {
+				return nil, err
+			}
+
+			attendanceLog.LoginTime = t1
+
+		}
+
+		if attendanceLog.LogoutTime != "pending" {
+			t2, err := utils.ConvertTo12HourFormat(attendanceLog.LogoutTime)
+
+			if err != nil {
+				return nil, err
+			}
+			attendanceLog.LogoutTime = t2
+		}
+		studentLogs = append(studentLogs, &attendanceLog)
+	}
+
+	return studentLogs, nil
 }

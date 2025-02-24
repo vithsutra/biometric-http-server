@@ -42,6 +42,7 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	router.HandleFunc("/user/update/student", studentHandler.UpdateStudentDetailsHandler).Methods("POST")
 	router.HandleFunc("/user/get/student/{unit_id}", studentHandler.GetStudentDetailsHandler).Methods("GET")
 	router.HandleFunc("/user/delete/student", studentHandler.DeleteStudentHandler).Methods("POST")
+	router.HandleFunc("/user/student/logs/{student_id}", studentHandler.GetStudentLogsHandler).Methods("GET")
 
 	return router
 }

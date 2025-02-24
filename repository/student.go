@@ -116,3 +116,19 @@ func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, 
 
 	return students, nil
 }
+
+func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAttendanceLog, error) {
+	studentId := mux.Vars(r)["student_id"]
+
+	query := database.NewQuery(repo.db)
+
+	logs, err := query.GetStudentLogs(studentId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	return logs, nil
+
+}

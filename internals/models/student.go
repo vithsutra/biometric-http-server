@@ -25,6 +25,12 @@ type DeleteStudentRequest struct {
 	StudentUnitId string `json:"student_unit_id" validate:"required"`
 }
 
+type StudentAttendanceLog struct {
+	Date       string `json:"date"`
+	LoginTime  string `json:"login_time"`
+	LogoutTime string `json:"logout_time"`
+}
+
 type Student struct {
 	StudentId     string `json:"student_id"`
 	StudentUnitId string `json:"student_unit_id"`
@@ -38,4 +44,5 @@ type StudentInterface interface {
 	UpdateStudentDetails(r *http.Request) error
 	DeleteStudent(r *http.Request) error
 	GetStudentDetails(r *http.Request) ([]*Student, error)
+	GetStudentLogs(r *http.Request) ([]*StudentAttendanceLog, error)
 }

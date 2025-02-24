@@ -76,3 +76,32 @@ func (h *studentHandler) GetStudentDetailsHandler(w http.ResponseWriter, r *http
 	})
 
 }
+
+func (h *studentHandler) GetStudentLogsHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	logs, err := h.repo.GetStudentLogs(r)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if logs == nil {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(
+			map[string]interface{}{
+				"logs": []interface{}{},
+			},
+		)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string][]*models.StudentAttendanceLog{
+		"logs": logs,
+	})
+
+}
