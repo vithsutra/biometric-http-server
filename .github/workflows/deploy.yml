@@ -19,9 +19,9 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
-          docker build -t $IMAGE_NAME
-          docker push $IMAGE_NAME
+            IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
+            docker build -t $IMAGE_NAME
+            docker push $IMAGE_NAME
 
   deploy:
     name: Deploy Docker Image to GCE
