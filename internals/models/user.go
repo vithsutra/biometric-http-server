@@ -28,6 +28,7 @@ type UserLoginRequest struct {
 }
 
 type UpdateTimeRequest struct {
+	UserId             string `json:"user_id" validate:"required"`
 	MorningStartTime   string `json:"morning_start_time" validate:"required,utcTimeFormat"`
 	MorningEndTime     string `json:"morning_end_time" validate:"required,utcTimeFormat"`
 	AfterNoonStartTime string `json:"afternoon_start_time" validate:"required,utcTimeFormat"`
@@ -53,9 +54,9 @@ type UserInterface interface {
 	GiveUserAccess(r *http.Request) (bool, error)
 	UserLogin(r *http.Request) (bool, string, error)
 	GetAllUsers(r *http.Request) ([]*User, error)
-	UpdateNewPassword(*http.Request) error
-	ForgotPassword(r *http.Request) (string, error)
-	ValidateOtp(r *http.Request) error
+	UpdateNewPassword(r *http.Request) (bool, error)
+	ForgotPassword(r *http.Request) (bool, string, error)
+	ValidateOtp(r *http.Request) (string, error)
 	UpdateTime(r *http.Request) error
 	GetBiometricDevicesForRegisterForm(r *http.Request) ([]string, error)
 	GetStudentUnitIdsForRegisterForm(r *http.Request) ([]string, error)

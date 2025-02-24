@@ -92,11 +92,17 @@ func (h *userHandler) GetAllUsersHandler(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *userHandler) UpdateNewPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	err := h.repo.UpdateNewPassword(r)
+	isUserIdExists, err := h.repo.UpdateNewPassword(r)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if !isUserIdExists {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "user id not exists"})
 		return
 	}
 
@@ -105,12 +111,18 @@ func (h *userHandler) UpdateNewPasswordHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *userHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	otpExpireTime, err := h.repo.ForgotPassword(r)
+	isEmailExists, otpExpireTime, err := h.repo.ForgotPassword(r)
 	w.Header().Set("Content-Type", "application/json")
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if !isEmailExists {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "email not exists"})
 		return
 	}
 
@@ -119,7 +131,7 @@ func (h *userHandler) ForgotPasswordHandler(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *userHandler) ValidateOtpHandler(w http.ResponseWriter, r *http.Request) {
-	err := h.repo.ValidateOtp(r)
+	userId, err := h.repo.ValidateOtp(r)
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -130,7 +142,7 @@ func (h *userHandler) ValidateOtpHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "otp was valid"})
+	json.NewEncoder(w).Encode(map[string]string{"user_id": userId})
 }
 
 func (h *userHandler) UpdateTime(w http.ResponseWriter, r *http.Request) {

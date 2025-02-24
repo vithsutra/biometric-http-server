@@ -49,6 +49,7 @@ func (q *Query) UserLogin(userName string) (string, string, error) {
 }
 
 func (q *Query) UpdateTime(
+	userId string,
 	morningStartTime string,
 	morningEndTime string,
 	afterNoonStartTime string,
@@ -56,9 +57,10 @@ func (q *Query) UpdateTime(
 	eveningStartTime string,
 	eveningEndTime string,
 ) error {
-	query := `UPDATE times SET morning_start=$1,morning_end=$2,afternoon_start=$3,afternoon_end=$4,evening_start=$5,evening_end=$6`
+	query := `UPDATE times SET morning_start=$2,morning_end=$3,afternoon_start=$4,afternoon_end=$5,evening_start=$6,evening_end=$7 WHERE user_id=$1`
 	_, err := q.db.Exec(
 		query,
+		userId,
 		morningStartTime,
 		morningEndTime,
 		afterNoonStartTime,
@@ -109,10 +111,36 @@ func (q *Query) GetAllUsers() ([]*models.User, error) {
 
 }
 
+func (q *Query) CheckUserIdExists(userId string) (bool, error) {
+	query := `SELECT EXISTS (
+				SELECT 1 FROM users WHERE user_id=$1
+			 )`
+
+	var isUserIdExists bool
+
+	if err := q.db.QueryRow(query, userId).Scan(&isUserIdExists); err != nil {
+		return false, err
+	}
+
+	return isUserIdExists, nil
+}
+
 func (q *Query) UpdateNewPassword(userId string, password string) error {
 	query := `UPDATE users SET password = $2 WHERE user_id = $1`
 	_, err := q.db.Exec(query, userId, password)
 	return err
+}
+
+func (q *Query) CheckUserEmailExists(email string) (bool, error) {
+	query := `SELECT EXISTS(
+				SELECT 1 FROM users WHERE email=$1
+			)`
+	var isEmailExists bool
+
+	if err := q.db.QueryRow(query, email).Scan(&isEmailExists); err != nil {
+		return false, err
+	}
+	return isEmailExists, nil
 }
 
 func (q *Query) StoreOtp(email string, otp string) error {
@@ -130,23 +158,46 @@ func (q *Query) ClearOtp(email string, otp string) error {
 	return err
 }
 
-func (q *Query) IsOtpValid(email string, otp string) (bool, error) {
+func (q *Query) IsOtpValid(email string, otp string) (bool, string, error) {
 	query1 := `SELECT EXISTS(
 				SELECT 1 FROM otps WHERE email = $1 AND otp = $2
 			)`
+	query2 := `DELETE FROM otps WHERE email = $1 AND otp = $2`
+
+	query3 := `SELECT user_id FROM users WHERE email = $1`
+
+	tx, err := q.db.Begin()
+
+	if err != nil {
+		return false, "", err
+	}
 
 	var isRowExists bool
 
-	if err := q.db.QueryRow(query1, email, otp).Scan(&isRowExists); err != nil {
-		return false, err
+	if err := tx.QueryRow(query1, email, otp).Scan(&isRowExists); err != nil {
+		tx.Rollback()
+		return false, "", err
 	}
 
-	query2 := `DELETE FROM otps WHERE email = $1 AND otp = $2`
-
-	if _, err := q.db.Exec(query2, email, otp); err != nil {
-		return false, err
+	if _, err := tx.Exec(query2, email, otp); err != nil {
+		tx.Rollback()
+		return false, "", err
 	}
-	return isRowExists, nil
+
+	var userId string
+
+	if err := tx.QueryRow(query3, email).Scan(&userId); err != nil {
+		tx.Rollback()
+		return false, "", err
+	}
+
+	if err := tx.Commit(); err != nil {
+		tx.Rollback()
+		return false, "", err
+	}
+
+	return isRowExists, userId, nil
+
 }
 
 func (q *Query) GetBiometricDevicesForRegisterForm(userId string) ([]string, error) {

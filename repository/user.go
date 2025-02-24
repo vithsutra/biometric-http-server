@@ -151,7 +151,7 @@ func (repo *userRepo) GetAllUsers(r *http.Request) ([]*models.User, error) {
 	return users, nil
 }
 
-func (repo *userRepo) UpdateNewPassword(r *http.Request) error {
+func (repo *userRepo) UpdateNewPassword(r *http.Request) (bool, error) {
 	var newPasswordUpdateRequest models.PasswordUpdateRequest
 	json.NewDecoder(r.Body).Decode(&newPasswordUpdateRequest)
 
@@ -161,54 +161,75 @@ func (repo *userRepo) UpdateNewPassword(r *http.Request) error {
 
 	if err := validate.Struct(newPasswordUpdateRequest); err != nil {
 		log.Println(err)
-		return errors.New("invalid request format")
+		return false, errors.New("invalid request format")
+	}
+
+	query := database.NewQuery(repo.db)
+
+	isUserIdExists, err := query.CheckUserIdExists(newPasswordUpdateRequest.UserId)
+
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	if !isUserIdExists {
+		return false, nil
 	}
 
 	password, err := utils.HashPassword(newPasswordUpdateRequest.NewPassword)
 
 	if err != nil {
 		log.Println(err)
-		return errors.New("internal server error")
+		return false, errors.New("internal server error")
 	}
-
-	query := database.NewQuery(repo.db)
 
 	if err := query.UpdateNewPassword(newPasswordUpdateRequest.UserId, password); err != nil {
 		log.Println(err)
-		return errors.New("internal server error")
+		return false, errors.New("internal server error")
 	}
 
-	return nil
+	return true, nil
 }
 
-func (repo *userRepo) ForgotPassword(r *http.Request) (string, error) {
+func (repo *userRepo) ForgotPassword(r *http.Request) (bool, string, error) {
 	//generating the random otp
 	//saving the otp for temporary in database
 	//sending the otp to the user registered email
 	var forgotPasswordRequest models.ForgotPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&forgotPasswordRequest); err != nil {
-		return "", errors.New("invalid json format")
+		return false, "", errors.New("invalid json format")
 	}
 
 	validate := validator.New()
 
 	if err := validate.Struct(forgotPasswordRequest); err != nil {
-		return "", errors.New("invalid request format")
+		return false, "", errors.New("invalid request format")
+	}
+	query := database.NewQuery(repo.db)
+
+	isEmailExists, err := query.CheckUserEmailExists(forgotPasswordRequest.Email)
+
+	if err != nil {
+		log.Println(err)
+		return false, "", err
+	}
+
+	if !isEmailExists {
+		return false, "", nil
 	}
 
 	otp, err := utils.GenerateOtp()
 
 	if err != nil {
 		log.Println(err)
-		return "", errors.New("internal server error")
+		return false, "", errors.New("internal server error")
 	}
-
-	query := database.NewQuery(repo.db)
 
 	if err := query.StoreOtp(forgotPasswordRequest.Email, otp); err != nil {
 		log.Println(err)
-		return "", errors.New("internal server error")
+		return false, "", errors.New("internal server error")
 	}
 
 	go func() {
@@ -220,38 +241,38 @@ func (repo *userRepo) ForgotPassword(r *http.Request) (string, error) {
 
 	if err := utils.SendOtpToEmail(forgotPasswordRequest.Email, otp, strconv.Itoa(OTP_EXPIRE_TIME)); err != nil {
 		log.Println(err)
-		return "", errors.New("internal server error")
+		return false, "", errors.New("internal server error")
 	}
-	return strconv.Itoa(OTP_EXPIRE_TIME), nil
+	return true, strconv.Itoa(OTP_EXPIRE_TIME), nil
 }
 
-func (repo *userRepo) ValidateOtp(r *http.Request) error {
+func (repo *userRepo) ValidateOtp(r *http.Request) (string, error) {
 	var otpValidationRequest models.ValidateOtpRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&otpValidationRequest); err != nil {
-		return errors.New("invalid json format")
+		return "", errors.New("invalid json format")
 	}
 
 	validate := validator.New()
 
 	if err := validate.Struct(otpValidationRequest); err != nil {
-		return errors.New("invalid request format, validation failed!!")
+		return "", errors.New("invalid request format, validation failed!!")
 	}
 
 	query := database.NewQuery(repo.db)
 
-	isOtpValid, err := query.IsOtpValid(otpValidationRequest.Email, otpValidationRequest.Otp)
+	isOtpValid, userId, err := query.IsOtpValid(otpValidationRequest.Email, otpValidationRequest.Otp)
 
 	if err != nil {
 		log.Println(err)
-		return errors.New("internal server error")
+		return "", errors.New("internal server error")
 	}
 
 	if !isOtpValid {
-		return errors.New("invalid otp")
+		return "", errors.New("invalid otp")
 	}
 
-	return nil
+	return userId, nil
 
 }
 
@@ -273,6 +294,7 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	query := database.NewQuery(repo.db)
 
 	if err := query.UpdateTime(
+		updateTimeRequest.UserId,
 		updateTimeRequest.MorningStartTime,
 		updateTimeRequest.MorningEndTime,
 		updateTimeRequest.AfterNoonStartTime,
