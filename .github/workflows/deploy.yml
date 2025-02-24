@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Authenticate With Dockerhub
-        run: echo ${{ secretes.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secretes.DOCKER_HUB_USERNAME }} --password-stdin
+        run: echo ${{ secrets.DOCKER_HUB_PASSWORD }} | docker login -u ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
       - name: Build and Push Docker Image
         run: |
@@ -31,20 +31,20 @@ jobs:
     steps:
       - name: Create .env file
         run: |
-            echo "SERVER_ADDRESS=${{ secretes.SERVER_ADDRESS }}" >> .env
-            echo "DB_URL=${{ secretes.DB_URL }}" >> .env
-            echo "ROOT_PASSWORD=${{ secretes.ROOT_PASSWORD }}" >> .env
-            echo "SMTP_HOST=${{ secretes.SMTP_HOST }}" >> .env
-            echo "SMTP_PORT=${{ secretes.SMTP_PORT }}" >> .env
-            echo "HOST_EMAIL=${{ secretes.HOST_EMAIL }}" >> .env
-            echo "APP_PASSWORD=${{ secretes.APP_PASSWORD }}" >> .env
+            echo "SERVER_ADDRESS=${{ secrets.SERVER_ADDRESS }}" >> .env
+            echo "DB_URL=${{ secrets.DB_URL }}" >> .env
+            echo "ROOT_PASSWORD=${{ secrets.ROOT_PASSWORD }}" >> .env
+            echo "SMTP_HOST=${{ secrets.SMTP_HOST }}" >> .env
+            echo "SMTP_PORT=${{ secrets.SMTP_PORT }}" >> .env
+            echo "HOST_EMAIL=${{ secrets.HOST_EMAIL }}" >> .env
+            echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env
 
       - name: Setup Deploy Environment in GCE Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.GCP_INSTANCE_HOST }}
           username: ${{ secrets.GCP_INSTANCE_USERNAME }}
-          key: ${{ secretes.GCE_SSH_PRIVATE_KEY }}
+          key: ${{ secrets.GCE_SSH_PRIVATE_KEY }}
 
           scripts: |
             echo "Connected to VM"
@@ -52,15 +52,15 @@ jobs:
 
       - name: Upload .env to GCE Instance
         run: |
-          echo ${{ secretes.GCE_SSH_PRIVATE_KEY }} > biometric_ssh_key
+          echo ${{ secrets.GCE_SSH_PRIVATE_KEY }} > biometric_ssh_key
           scp -o StrictHostKeyChecking=no -i biometric_ssh_key .env ${{ secrets.GCP_INSTANCE_USERNAME }}@${{ secrets.GCP_INSTANCE_HOST }}:~/biometric/biometric-http-server-deployment/.env
 
       - name: Deploying Docker Image on GCE Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secretes.GCP_INSTANCE_HOST }}
-          username: ${{ secretes.GCP_INSTANCE_USERNAME }}
-          key: ${{ secretes.GCE_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.GCP_INSTANCE_HOST }}
+          username: ${{ secrets.GCP_INSTANCE_USERNAME }}
+          key: ${{ secrets.GCE_SSH_PRIVATE_KEY }}
           script: |
             IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
             docker pull $IMAGE_NAME
