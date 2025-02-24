@@ -30,7 +30,7 @@ jobs:
 
     steps:
       - name: Create .env file
-          run: |
+        run: |
             echo "SERVER_ADDRESS=${{ secretes.SERVER_ADDRESS }}" >> .env
             echo "DB_URL=${{ secretes.DB_URL }}" >> .env
             echo "ROOT_PASSWORD=${{ secretes.ROOT_PASSWORD }}" >> .env
