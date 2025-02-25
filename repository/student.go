@@ -9,6 +9,7 @@ import (
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
+	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -131,4 +132,32 @@ func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAtten
 
 	return logs, nil
 
+}
+
+func (repo *studentRepo) DownloadPdf(r *http.Request) error {
+	var pdfDownloadRequest models.PdfDownloadRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&pdfDownloadRequest); err != nil {
+		return errors.New("invalid json format")
+	}
+
+	validate := validator.New()
+
+	if err := validate.Struct(pdfDownloadRequest); err != nil {
+		return errors.New("invalid request format")
+	}
+
+	midDates, err := utils.GetMiddleDates(pdfDownloadRequest.StartDate, pdfDownloadRequest.EndDate)
+
+	log.Println(err)
+
+	if err != nil {
+		return errors.New("invalid request format")
+	}
+
+	for _, date := range midDates {
+		log.Println(date)
+	}
+
+	return nil
 }

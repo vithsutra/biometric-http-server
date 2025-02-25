@@ -31,6 +31,12 @@ type StudentAttendanceLog struct {
 	LogoutTime string `json:"logout_time"`
 }
 
+type PdfDownloadRequest struct {
+	UnitId    string `json:"unit_id" validate:"required"`
+	StartDate string `json:"start_date" validate:"required"`
+	EndDate   string `json:"end_date" validate:"required"`
+}
+
 type Student struct {
 	StudentId     string `json:"student_id"`
 	StudentUnitId string `json:"student_unit_id"`
@@ -45,4 +51,5 @@ type StudentInterface interface {
 	DeleteStudent(r *http.Request) error
 	GetStudentDetails(r *http.Request) ([]*Student, error)
 	GetStudentLogs(r *http.Request) ([]*StudentAttendanceLog, error)
+	DownloadPdf(r *http.Request) error
 }
