@@ -42,15 +42,16 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 	var student models.Student
 
 	unitId := strings.ToLower(createStudentRequest.UnitId)
+
 	student.StudentId = uuid.NewString()
-	student.StudentUnitId = unitId
+	student.StudentUnitId = createStudentRequest.StudentUnitId
 	student.StudentName = createStudentRequest.StudentName
 	student.StudentUsn = createStudentRequest.StudentUsn
 	student.Department = createStudentRequest.Department
 
 	query := database.NewQuery(repo.db)
 
-	if err := query.CreateNewStudent(&student, createStudentRequest.UnitId, createStudentRequest.FingerprintData); err != nil {
+	if err := query.CreateNewStudent(&student, unitId, createStudentRequest.FingerprintData); err != nil {
 		log.Println(err)
 		return errors.New("internal server error")
 	}
