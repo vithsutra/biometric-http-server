@@ -87,7 +87,9 @@ func (repo *biometricRepo) UpdateBiometricLabel(r *http.Request) error {
 
 	query := database.NewQuery(repo.db)
 
-	if err := query.UpdateBiometricLabel(biometricLabelUpdateRequest.UnitId, biometricLabelUpdateRequest.Label); err != nil {
+	unitId := strings.ToLower(biometricLabelUpdateRequest.UnitId)
+
+	if err := query.UpdateBiometricLabel(unitId, biometricLabelUpdateRequest.Label); err != nil {
 		log.Println(err)
 		return errors.New("internal server error")
 	}

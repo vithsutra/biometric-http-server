@@ -291,6 +291,18 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 		return errors.New("invalid request format")
 	}
 
+	if err := utils.UserUpdateTimeValidater(
+		updateTimeRequest.MorningStartTime,
+		updateTimeRequest.MorningEndTime,
+		updateTimeRequest.AfterNoonStartTime,
+		updateTimeRequest.AfterNoonEndTime,
+		updateTimeRequest.EveningStartTime,
+		updateTimeRequest.EveningEndTime,
+	); err != nil {
+		log.Println(err)
+		return errors.New("invalid request format")
+	}
+
 	query := database.NewQuery(repo.db)
 
 	if err := query.UpdateTime(

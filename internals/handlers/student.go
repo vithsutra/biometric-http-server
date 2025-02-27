@@ -107,12 +107,17 @@ func (h *studentHandler) GetStudentLogsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *studentHandler) DownloadPdfHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if err := h.repo.DownloadPdf(r); err != nil {
+	_, err := h.repo.DownloadPdf(r)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+
+	// w.Header().Set("Content-Type", "application/pdf")
+
+	// utils.GeneratePdf(w, logs)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "pdf download successfull"})

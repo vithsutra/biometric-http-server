@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
@@ -39,8 +41,9 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 
 	var student models.Student
 
+	unitId := strings.ToLower(createStudentRequest.UnitId)
 	student.StudentId = uuid.NewString()
-	student.StudentUnitId = createStudentRequest.StudentUnitId
+	student.StudentUnitId = unitId
 	student.StudentName = createStudentRequest.StudentName
 	student.StudentUsn = createStudentRequest.StudentUsn
 	student.Department = createStudentRequest.Department
@@ -70,7 +73,8 @@ func (repo *studentRepo) UpdateStudentDetails(r *http.Request) error {
 
 	query := database.NewQuery(repo.db)
 
-	if err := query.UpdateStudent(studentUpdateRequest.UnitId, studentUpdateRequest.StudentId, studentUpdateRequest.StudentName, studentUpdateRequest.StudentUsn, studentUpdateRequest.Department); err != nil {
+	unitId := strings.ToLower(studentUpdateRequest.UnitId)
+	if err := query.UpdateStudent(unitId, studentUpdateRequest.StudentId, studentUpdateRequest.StudentName, studentUpdateRequest.StudentUsn, studentUpdateRequest.Department); err != nil {
 		log.Println(err)
 		return errors.New("internal server error")
 	}
@@ -93,7 +97,9 @@ func (repo *studentRepo) DeleteStudent(r *http.Request) error {
 
 	query := database.NewQuery(repo.db)
 
-	if err := query.DeleteStudent(deleteStudentRequest.UnitId, deleteStudentRequest.StudentId, deleteStudentRequest.StudentUnitId); err != nil {
+	unitId := strings.ToLower(deleteStudentRequest.UnitId)
+
+	if err := query.DeleteStudent(unitId, deleteStudentRequest.StudentId, deleteStudentRequest.StudentUnitId); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -134,30 +140,42 @@ func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAtten
 
 }
 
-func (repo *studentRepo) DownloadPdf(r *http.Request) error {
+func (repo *studentRepo) DownloadPdf(r *http.Request) ([][]*models.PdfFormat, error) {
 	var pdfDownloadRequest models.PdfDownloadRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&pdfDownloadRequest); err != nil {
-		return errors.New("invalid json format")
+		return nil, errors.New("invalid json format")
 	}
 
 	validate := validator.New()
 
+	validate.RegisterValidation("slot", utils.SlotValidater)
+
 	if err := validate.Struct(pdfDownloadRequest); err != nil {
-		return errors.New("invalid request format")
+		return nil, errors.New("invalid request format")
 	}
 
-	midDates, err := utils.GetMiddleDates(pdfDownloadRequest.StartDate, pdfDownloadRequest.EndDate)
-
-	log.Println(err)
+	dates, err := utils.GetMiddleDates(pdfDownloadRequest.StartDate, pdfDownloadRequest.EndDate)
 
 	if err != nil {
-		return errors.New("invalid request format")
+		return nil, errors.New("invalid request format")
 	}
 
-	for _, date := range midDates {
-		log.Println(date)
+	log.Println(dates)
+
+	return nil, nil
+
+	query := database.NewQuery(repo.db)
+
+	logs, err := query.GetStudentsAttendanceLogForPdf("vs242s38", "2f706016-10b4-406c-ba00-fb6fa2cb1374", "2025-02-26", "full")
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	return nil
+	for _, l := range logs {
+		fmt.Println(l)
+	}
+	return nil, nil
+
 }

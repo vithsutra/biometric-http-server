@@ -161,3 +161,61 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 
 	return studentLogs, nil
 }
+
+func (q *Query) GetStudentsAttendanceLogForPdf(unitId string, userId string, date string, slot string) ([]*models.PdfFormat, error) {
+	query := `	
+	WITH student_logs AS (
+		SELECT 
+			s.student_name,
+			s.student_usn,
+			a.student_id,
+			a.date,
+			COALESCE(a.login, 'Pending') AS login,
+			COALESCE(a.logout, 'Pending') AS logout
+		FROM ` + unitId + ` s
+		LEFT JOIN attendance a 
+			ON s.student_id = a.student_id 
+			AND s.student_unit_id = a.student_unit_id
+	)
+	SELECT 
+		sl.student_name,
+		sl.student_usn,
+		COALESCE(a.login, 'Pending') AS login,
+		COALESCE(a.logout, 'Pending') AS logout
+	FROM student_logs sl
+	LEFT JOIN times t 
+		ON t.user_id = $1  -- Filter times for the given user_id
+	LEFT JOIN attendance a 
+		ON sl.student_id = a.student_id 
+		AND sl.date = $2
+	WHERE 
+		sl.date = $2
+		AND (
+			($3 = 'morning'   AND a.login::time >= t.morning_start::time  AND a.logout::time <= t.afternoon_end::time)
+			OR ($3 = 'afternoon' AND a.login::time >= t.afternoon_start::time AND a.logout::time <= t.evening_end::time)
+			OR ($3 = 'full'    AND a.login::time >= t.morning_start::time  AND a.logout::time <= t.evening_end::time)
+		);`
+
+	rows, err := q.db.Query(query, userId, date, slot)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var studentLogs []*models.PdfFormat
+
+	for rows.Next() {
+		var studentLog models.PdfFormat
+
+		if err := rows.Scan(&studentLog.Name, &studentLog.Usn, &studentLog.Login, &studentLog.Logout); err != nil {
+			return nil, err
+		}
+
+		studentLogs = append(studentLogs, &studentLog)
+	}
+
+	return studentLogs, nil
+
+}
