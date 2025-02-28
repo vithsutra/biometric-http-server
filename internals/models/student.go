@@ -1,6 +1,10 @@
 package models
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/signintech/gopdf"
+)
 
 type CreateStudentRequest struct {
 	StudentUnitId   string `json:"student_unit_id" validate:"required"`
@@ -61,5 +65,5 @@ type StudentInterface interface {
 	DeleteStudent(r *http.Request) error
 	GetStudentDetails(r *http.Request) ([]*Student, error)
 	GetStudentLogs(r *http.Request) ([]*StudentAttendanceLog, error)
-	DownloadPdf(r *http.Request) ([][]*PdfFormat, error)
+	DownloadPdf(r *http.Request) (*gopdf.GoPdf, error)
 }

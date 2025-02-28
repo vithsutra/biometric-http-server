@@ -1,418 +1,460 @@
 package utils
 
-// import (
-// 	"image"
-// 	"log"
-// 	"net/http"
-// 	"os"
-// 	"strconv"
-
-// 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
-// 	"github.com/signintech/gopdf"
-// )
-
-// const (
-// 	PAGE_WIDTH    float64 = 21.0
-// 	PAGE_HEIGHT   float64 = 29.7
-// 	CELL_WIDTH    float64 = 4.0
-// 	FONT_SIZE     int     = 10
-// 	LINE_HEIGHT   float64 = 0.6
-// 	MARGIN_BOTTOM float64 = 1.0
-
-// 	MARGIN_TOP float64 = 1.0
-// )
-
-// func OuterBorderSection(pdf *gopdf.GoPdf) {
-// 	pdf.SetStrokeColor(0, 0, 0)
-// 	pdf.SetLineWidth(0.05)
-// 	pdf.Line(1, 1, 20, 1)
-// 	pdf.Line(1, 1, 1, 28.7)
-// 	pdf.Line(1, 28.7, 20, 28.7)
-// 	pdf.Line(20, 1, 20, 28.7)
-// }
-
-// func findMainHeaderCordinates1(pdf *gopdf.GoPdf, spacing float64, text string) (float64, float64, error) {
-// 	textWidth, err := pdf.MeasureTextWidth(text)
-
-// 	if err != nil {
-// 		return 0.0, 0.0, err
-// 	}
-
-// 	return (PAGE_WIDTH / 2) - (textWidth / 2), pdf.GetY() + spacing, nil
-// }
-// func findMainHeaderCordinates2(pdf *gopdf.GoPdf, spacing float64, text string) (float64, float64, error) {
-// 	textWidth, err := pdf.MeasureTextWidth(text)
-
-// 	if err != nil {
-// 		return 0.0, 0.0, err
-// 	}
-
-// 	return ((PAGE_WIDTH / 2) - 3.05) - (textWidth / 2), pdf.GetY() + spacing, nil
-// }
-
-// func addResizedImage(pdf *gopdf.GoPdf, imgPath string, x, y, maxW, maxH float64) {
-
-// 	file, err := os.Open(imgPath)
-// 	if err != nil {
-// 		log.Fatalf("Error opening image: %v", err)
-// 	}
-// 	defer file.Close()
-
-// 	img, _, err := image.DecodeConfig(file)
-// 	if err != nil {
-// 		log.Fatalf("Error decoding image: %v", err)
-// 	}
-// 	imgW, imgH := float64(img.Width), float64(img.Height)
-
-// 	scale := min(maxW/imgW, maxH/imgH)
-// 	newW, newH := imgW*scale, imgH*scale
-
-// 	if err := pdf.Image(imgPath, x, y, &gopdf.Rect{W: newW, H: newH}); err != nil {
-// 		log.Fatalf("Error adding image: %v", err)
-// 	}
-// }
-
-// func min(a, b float64) float64 {
-// 	if a < b {
-// 		return a
-// 	}
-// 	return b
-// }
-
-// func GeneratePdf(w http.ResponseWriter) {
-// 	pdf := gopdf.GoPdf{}
-
-// 	pdf.Start(gopdf.Config{
-// 		PageSize: *gopdf.PageSizeA4,
-// 		Unit:     gopdf.UnitCM,
-// 	})
-
-// 	if err := pdf.AddTTFFont("bold-font", "./font-family/Roboto/static/Roboto-Bold.ttf"); err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	if err := pdf.AddTTFFont("light-font", "./font-family/Roboto/static/Roboto-Regular.ttf"); err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	pdf.AddHeader(func() {
-// 		companyName := "VITHSUTRA TECHNOLOGIES Pvt. Ltd." // 5
-// 		phone := "Phone: +919845849116"
-// 		email := "Email: contact@vithsutra.com"
-// 		web := "Web: www.vithsutra.com"
-
-// 		OuterBorderSection(&pdf)
-
-// 		if err := pdf.SetFont("bold-font", "", 17); err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		x, y, err := findMainHeaderCordinates1(&pdf, 2, companyName)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		pdf.SetXY(x, y)
-// 		pdf.Text(companyName)
-
-// 		if err := pdf.SetFont("light-font", "", 12); err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		x, y, err = findMainHeaderCordinates2(&pdf, 0.6, phone)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		pdf.SetXY(x, y)
-// 		pdf.Text(phone)
-
-// 		pdf.SetXY(x+5, y)
-// 		pdf.Text(email)
-
-// 		x, y, err = findMainHeaderCordinates1(&pdf, 0.6, web)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-
-// 		pdf.SetXY(x, y)
-// 		pdf.Text(web)
-
-// 		pdf.SetStrokeColor(0, 0, 0)
-// 		pdf.SetLineWidth(0.05)
+import (
+	"image"
+	"log"
+	"os"
+	"strconv"
+
+	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
+	"github.com/signintech/gopdf"
+)
+
+const (
+	PAGE_WIDTH    float64 = 21.0
+	PAGE_HEIGHT   float64 = 29.7
+	CELL_WIDTH    float64 = 4.0
+	FONT_SIZE     int     = 10
+	LINE_HEIGHT   float64 = 0.6
+	MARGIN_BOTTOM float64 = 1.0
+
+	MARGIN_TOP float64 = 1.0
+)
+
+func InitPdf(pdf *gopdf.GoPdf) error {
+	pdf.Start(gopdf.Config{
+		PageSize: *gopdf.PageSizeA4,
+		Unit:     gopdf.UnitCM,
+	})
+
+	if err := pdf.AddTTFFont("bold-font", "./font-family/Roboto/static/Roboto-Bold.ttf"); err != nil {
+		return err
+	}
+
+	if err := pdf.AddTTFFont("light-font", "./font-family/Roboto/static/Roboto-Regular.ttf"); err != nil {
+		return err
+	}
+
+	pdf.AddHeader(func() {
+		companyName := "VITHSUTRA TECHNOLOGIES Pvt. Ltd." // 5
+		phone := "Phone: +919845849116"
+		email := "Email: contact@vithsutra.com"
+		web := "Web: www.vithsutra.com"
+
+		outerBorderSection(pdf)
+
+		if err := pdf.SetFont("bold-font", "", 17); err != nil {
+			log.Println(err)
+			return
+		}
+
+		x, y, err := findMainHeaderCordinates1(pdf, 2, companyName)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		pdf.SetXY(x, y)
+		pdf.Text(companyName)
+
+		if err := pdf.SetFont("light-font", "", 12); err != nil {
+			log.Println(err)
+			return
+		}
+
+		x, y, err = findMainHeaderCordinates2(pdf, 0.6, phone)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		pdf.SetXY(x, y)
+		pdf.Text(phone)
+
+		pdf.SetXY(x+5, y)
+		pdf.Text(email)
+
+		x, y, err = findMainHeaderCordinates1(pdf, 0.6, web)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		pdf.SetXY(x, y)
+		pdf.Text(web)
+
+		pdf.SetStrokeColor(0, 0, 0)
+		pdf.SetLineWidth(0.05)
+
+		pdf.Line(1.9, 4, 19.1, 4)
+
+		if err := addResizedImage(pdf, "./assets/company_logo.png", 1.4, 1.5, 3.1, 3.1); err != nil {
+			log.Println(err)
+		}
+	})
+
+	return nil
+
+}
+
+func GeneratePdf(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, studentsAttendanceLogs []*models.PdfFormat) error {
+	if err := generateStudentReport(pdf, date, machineId, slotStatus, studentsAttendanceLogs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func displayDate(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string) error {
+
+	if err := pdf.SetFont("bold-font", "", 14); err != nil {
+		return err
+	}
+	// x, y := 1.8, pdf.GetY()+1
+	x, y := 1.8, 4.552777777777778
+
+	textX := x + 0.15
+	textY := y + 0.6
+	pdf.SetXY(textX, textY)
+	pdf.Text("Date: ")
+
+	if err := pdf.SetFont("light-font", "", 14); err != nil {
+		return err
+	}
+	textX = x + 1.4
+	textY = y + 0.6
+	pdf.SetXY(textX, textY)
+	pdf.Text(date)
+
+	if err := pdf.SetFont("bold-font", "", 14); err != nil {
+		return err
+	}
+	textX = x + 12
+	textY = y + 0.6
+	pdf.SetXY(textX, textY)
+	pdf.Text("Machine ID: ")
+
+	if err := pdf.SetFont("light-font", "", 14); err != nil {
+		return err
+	}
+	textX = x + 14.8
+	textY = y + 0.6
+	pdf.SetXY(textX, textY)
+	pdf.Text(machineId)
+
+	if err := pdf.SetFont("bold-font", "", 14); err != nil {
+		return err
+	}
+
+	x, y = 1.8, pdf.GetY()+0.8
+
+	textX = x + 0.15
+	textY = y + 0.3
+	pdf.SetXY(textX, textY)
+	pdf.Text("Slot: ")
+
+	if err := pdf.SetFont("light-font", "", 14); err != nil {
+		return err
+	}
+
+	textX = x + 1.3
+	textY = y + 0.3
+	pdf.SetXY(textX, textY)
+	pdf.Text(slotStatus)
+
+	return nil
+}
+
+func outerBorderSection(pdf *gopdf.GoPdf) {
+	pdf.SetStrokeColor(0, 0, 0)
+	pdf.SetLineWidth(0.05)
+	pdf.Line(1, 1, 20, 1)
+	pdf.Line(1, 1, 1, 28.7)
+	pdf.Line(1, 28.7, 20, 28.7)
+	pdf.Line(20, 1, 20, 28.7)
+}
+
+func findMainHeaderCordinates1(pdf *gopdf.GoPdf, spacing float64, text string) (float64, float64, error) {
+	textWidth, err := pdf.MeasureTextWidth(text)
+
+	if err != nil {
+		return 0.0, 0.0, err
+	}
+
+	return (PAGE_WIDTH / 2) - (textWidth / 2), pdf.GetY() + spacing, nil
+}
+func findMainHeaderCordinates2(pdf *gopdf.GoPdf, spacing float64, text string) (float64, float64, error) {
+	textWidth, err := pdf.MeasureTextWidth(text)
+
+	if err != nil {
+		return 0.0, 0.0, err
+	}
+
+	return ((PAGE_WIDTH / 2) - 3.05) - (textWidth / 2), pdf.GetY() + spacing, nil
+}
+
+func addResizedImage(pdf *gopdf.GoPdf, imgPath string, x, y, maxW, maxH float64) error {
+
+	file, err := os.Open(imgPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	img, _, err := image.DecodeConfig(file)
+	if err != nil {
+		return err
+	}
+	imgW, imgH := float64(img.Width), float64(img.Height)
+
+	scale := min(maxW/imgW, maxH/imgH)
+	newW, newH := imgW*scale, imgH*scale
+
+	if err := pdf.Image(imgPath, x, y, &gopdf.Rect{W: newW, H: newH}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func min(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func createTableForStudentsfirst(pdf *gopdf.GoPdf, isfirstPage bool) error {
+
+	if err := pdf.SetFont("bold-font", "", 14); err != nil {
+		return err
+	}
+
+	if isfirstPage {
+		x, y := 1.0, pdf.GetY()+0.7
 
-// 		pdf.Line(1.9, 4, 19.1, 4)
+		pdf.SetStrokeColor(0, 0, 0)
+		pdf.SetLineWidth(0.05)
+		pdf.Line(1, 7, 20, 7)
 
-// 		addResizedImage(&pdf, "./assets/company_logo.png", 1.4, 1.5, 3.1, 3.1)
-// 	})
-
-// 	for _, logsWithDate := range logs {
-// 		GenerateStudentReport(&pdf, logsWithDate)
-// 	}
-
-// 	if _, err := pdf.WriteTo(w); err != nil {
-// 		log.Fatalln(err)
-// 	}
-// }
-
-// func DisplayDate(pdf *gopdf.GoPdf) {
+		pdf.SetStrokeColor(0, 0, 0)
+		pdf.SetLineWidth(0.05)
+		pdf.Line(1, 8, 20, 8)
 
-// 	if err := pdf.SetFont("bold-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	date := "12/03/2003"
-// 	machineId := "VS242S45_"
-// 	slotStatus := "morning"
+		lineX := x + 1.6
+		lineY := y + 0.05
 
-// 	// x, y := 1.8, pdf.GetY()+1
-// 	x, y := 1.8, 4.552777777777778
+		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 	textX := x + 0.15
-// 	textY := y + 0.6
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text("Date: ")
+		//first text
+		textX := x + 0.15
+		textY := y + 0.7
+		pdf.SetXY(textX, textY)
+		pdf.Text("Sr.No.")
 
-// 	if err := pdf.SetFont("light-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	textX = x + 1.4
-// 	textY = y + 0.6
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text(date)
+		//second text
+		textX = textX + 2.75
+		pdf.SetXY(textX, textY)
+		pdf.Text("USN")
 
-// 	if err := pdf.SetFont("bold-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	textX = x + 12
-// 	textY = y + 0.6
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text("Machine ID: ")
+		//second line
+		lineX = (PAGE_WIDTH/2)/2 + 1
+		lineY = y + 0.05
 
-// 	if err := pdf.SetFont("light-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	textX = x + 14.8
-// 	textY = y + 0.6
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text(machineId)
+		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 	if err := pdf.SetFont("bold-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
+		//third line
+		lineX = PAGE_WIDTH/2 + 2
+		lineY = y + 0.05
 
-// 	x, y = 1.8, pdf.GetY()+0.8
+		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 	textX = x + 0.15
-// 	textY = y + 0.3
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text("Slot: ")
+		//third text
+		textX = textX + 4.7
+		pdf.SetXY(textX, textY)
+		pdf.Text("NAME")
 
-// 	if err := pdf.SetFont("light-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
+		//fourth line
+		lineX = (PAGE_WIDTH / 2) + 5.65
 
-// 	textX = x + 1.3
-// 	textY = y + 0.3
-// 	pdf.SetXY(textX, textY)
-// 	pdf.Text(slotStatus)
+		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// }
+		// //fourth text
+		textX = (PAGE_WIDTH / 2) + 3.15
+		pdf.SetXY(textX, textY)
+		pdf.Text("LOGIN")
 
-// func createTableForStudentsfirst(pdf *gopdf.GoPdf, isfirstPage bool) {
+		textX = (PAGE_WIDTH / 2) + 6.65
+		pdf.SetXY(textX, textY)
+		pdf.Text("LOGOUT")
 
-// 	if err := pdf.SetFont("bold-font", "", 14); err != nil {
-// 		log.Fatal(err)
-// 	}
+		return nil
 
-// 	if isfirstPage {
-// 		x, y := 1.0, pdf.GetY()+0.7
+	}
 
-// 		pdf.SetStrokeColor(0, 0, 0)
-// 		pdf.SetLineWidth(0.05)
-// 		pdf.Line(1, 7, 20, 7)
+	x, y := 1.0, 4.7
 
-// 		pdf.SetStrokeColor(0, 0, 0)
-// 		pdf.SetLineWidth(0.05)
-// 		pdf.Line(1, 8, 20, 8)
+	pdf.SetStrokeColor(0, 0, 0)
+	pdf.SetLineWidth(0.05)
+	pdf.Line(1, 4.7, 20, 4.7)
 
-// 		lineX := x + 1.6
-// 		lineY := y + 0.05
+	pdf.SetStrokeColor(0, 0, 0)
+	pdf.SetLineWidth(0.05)
+	pdf.Line(1, 5.7, 20, 5.7)
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	lineX := x + 1.6
+	lineY := y + 0.05
 
-// 		//first text
-// 		textX := x + 0.15
-// 		textY := y + 0.7
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("Sr.No.")
+	pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 		//second text
-// 		textX = textX + 2.75
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("USN")
+	//first text
+	textX := x + 0.15
+	textY := y + 0.7
+	pdf.SetXY(textX, textY)
+	pdf.Text("Sr.No.")
 
-// 		//second line
-// 		lineX = (PAGE_WIDTH/2)/2 + 1
-// 		lineY = y + 0.05
+	//second text
+	textX = textX + 2.75
+	pdf.SetXY(textX, textY)
+	pdf.Text("USN")
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	//second line
+	lineX = (PAGE_WIDTH/2)/2 + 1
+	lineY = y + 0.05
 
-// 		//third line
-// 		lineX = PAGE_WIDTH/2 + 2
-// 		lineY = y + 0.05
+	pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	//third line
+	lineX = PAGE_WIDTH/2 + 2
+	lineY = y + 0.05
 
-// 		//third text
-// 		textX = textX + 4.7
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("NAME")
+	pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 		//fourth line
-// 		lineX = (PAGE_WIDTH / 2) + 5.65
+	//third text
+	textX = textX + 4.7
+	pdf.SetXY(textX, textY)
+	pdf.Text("NAME")
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	//fourth line
+	lineX = (PAGE_WIDTH / 2) + 5.65
 
-// 		// //fourth text
-// 		textX = (PAGE_WIDTH / 2) + 3.15
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("LOGIN")
+	pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
 
-// 		textX = (PAGE_WIDTH / 2) + 6.65
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("LOGOUT")
+	// //fourth text
+	textX = (PAGE_WIDTH / 2) + 3.15
+	pdf.SetXY(textX, textY)
+	pdf.Text("LOGIN")
 
-// 	} else {
-// 		x, y := 1.0, 4.7
+	textX = (PAGE_WIDTH / 2) + 6.65
+	pdf.SetXY(textX, textY)
+	pdf.Text("LOGOUT")
 
-// 		pdf.SetStrokeColor(0, 0, 0)
-// 		pdf.SetLineWidth(0.05)
-// 		pdf.Line(1, 4.7, 20, 4.7)
+	return nil
 
-// 		pdf.SetStrokeColor(0, 0, 0)
-// 		pdf.SetLineWidth(0.05)
-// 		pdf.Line(1, 5.7, 20, 5.7)
+}
 
-// 		lineX := x + 1.6
-// 		lineY := y + 0.05
+func createStudentRow(pdf *gopdf.GoPdf, index string, studentAttendanceLog *models.PdfFormat, startY float64) (float64, error) {
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	nameLines := splitText(studentAttendanceLog.Name, 27)
+	lineCount := len(nameLines)
+	rowHeight := 1.0 + (float64(lineCount-1) * 0.5)
 
-// 		//first text
-// 		textX := x + 0.15
-// 		textY := y + 0.7
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("Sr.No.")
+	if err := pdf.SetFont("light-font", "", 12); err != nil {
+		return 0.0, err
+	}
 
-// 		//second text
-// 		textX = textX + 2.75
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("USN")
+	calculateY := func(baseY float64) float64 {
+		return startY + (rowHeight-1)*0.3 + baseY
+	}
 
-// 		//second line
-// 		lineX = (PAGE_WIDTH/2)/2 + 1
-// 		lineY = y + 0.05
+	pdf.SetXY(1.6, calculateY(0.6))
+	pdf.Text(index)
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	pdf.SetXY(3.2, calculateY(0.6))
+	pdf.Text(studentAttendanceLog.Usn)
 
-// 		//third line
-// 		lineX = PAGE_WIDTH/2 + 2
-// 		lineY = y + 0.05
+	nameStartY := startY + 0.6
+	for i, line := range nameLines {
+		pdf.SetXY(6.7, nameStartY+(float64(i)*0.5))
+		pdf.Text(line)
+	}
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	pdf.SetXY(13.4, calculateY(0.6))
+	pdf.Text(studentAttendanceLog.Login)
 
-// 		//third text
-// 		textX = textX + 4.7
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("NAME")
+	pdf.SetXY(17.2, calculateY(0.6))
+	pdf.Text(studentAttendanceLog.Logout)
 
-// 		//fourth line
-// 		lineX = (PAGE_WIDTH / 2) + 5.65
+	pdf.SetStrokeColor(0, 0, 0)
+	pdf.SetLineWidth(0.05)
+	pdf.Line(1, startY+rowHeight, 20, startY+rowHeight)
 
-// 		pdf.Line(lineX, lineY, lineX, PAGE_HEIGHT-1)
+	return startY + rowHeight, nil
+}
 
-// 		// //fourth text
-// 		textX = (PAGE_WIDTH / 2) + 3.15
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("LOGIN")
+func splitText(text string, maxLen int) []string {
+	var lines []string
+	for len(text) > maxLen {
+		lines = append(lines, text[:maxLen])
+		text = text[maxLen:]
+	}
+	if len(text) > 0 {
+		lines = append(lines, text)
+	}
+	return lines
+}
 
-// 		textX = (PAGE_WIDTH / 2) + 6.65
-// 		pdf.SetXY(textX, textY)
-// 		pdf.Text("LOGOUT")
+func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, studentsAttendanceLogs []*models.PdfFormat) error {
+	pdf.AddPage()
+	if err := displayDate(pdf, date, machineId, slotStatus); err != nil {
+		return err
+	}
 
-// 	}
+	if err := createTableForStudentsfirst(pdf, true); err != nil {
+		return err
+	}
 
-// }
+	startY := pdf.GetY() + 0.4
 
-// func createStudentRow(pdf *gopdf.GoPdf, index string, student *models.PdfFormat, startY float64) float64 {
+	for index, studentAttendanceLog := range studentsAttendanceLogs {
 
-// 	nameLines := splitText(student.Name, 27)
-// 	lineCount := len(nameLines)
-// 	rowHeight := 1.0 + (float64(lineCount-1) * 0.5)
+		if studentAttendanceLog.Login != "pending" {
+			t, err := ConvertTo12HourFormat(studentAttendanceLog.Login)
+			if err != nil {
+				return err
+			}
 
-// 	if err := pdf.SetFont("light-font", "", 12); err != nil {
-// 		log.Fatal(err)
-// 	}
+			studentAttendanceLog.Login = t
+		}
 
-// 	calculateY := func(baseY float64) float64 {
-// 		return startY + (rowHeight-1)*0.3 + baseY
-// 	}
+		if studentAttendanceLog.Logout != "pending" {
+			t, err := ConvertTo12HourFormat(studentAttendanceLog.Logout)
+			if err != nil {
+				return err
+			}
 
-// 	pdf.SetXY(1.6, calculateY(0.6))
-// 	pdf.Text(index)
+			studentAttendanceLog.Logout = t
+		}
 
-// 	pdf.SetXY(3.2, calculateY(0.6))
-// 	pdf.Text(student.Usn)
+		rowHeight := 1.0 + (float64(len(splitText(studentAttendanceLog.Name, 27))-1) * 0.5)
 
-// 	nameStartY := startY + 0.6
-// 	for i, line := range nameLines {
-// 		pdf.SetXY(6.7, nameStartY+(float64(i)*0.5))
-// 		pdf.Text(line)
-// 	}
+		if startY+rowHeight > PAGE_HEIGHT-MARGIN_BOTTOM {
+			pdf.AddPage()
+			startY = 5.7
+			if err := createTableForStudentsfirst(pdf, false); err != nil {
+				return err
+			}
+		}
 
-// 	pdf.SetXY(13.4, calculateY(0.6))
-// 	pdf.Text(student.Login)
+		startYNewPoint, err := createStudentRow(pdf, strconv.Itoa(index+1), studentAttendanceLog, startY)
 
-// 	pdf.SetXY(17.2, calculateY(0.6))
-// 	pdf.Text(student.Logout)
+		if err != nil {
+			return err
+		}
 
-// 	pdf.SetStrokeColor(0, 0, 0)
-// 	pdf.SetLineWidth(0.05)
-// 	pdf.Line(1, startY+rowHeight, 20, startY+rowHeight)
+		startY = startYNewPoint
+	}
 
-// 	return startY + rowHeight
-// }
+	return nil
 
-// func splitText(text string, maxLen int) []string {
-// 	var lines []string
-// 	for len(text) > maxLen {
-// 		lines = append(lines, text[:maxLen])
-// 		text = text[maxLen:]
-// 	}
-// 	if len(text) > 0 {
-// 		lines = append(lines, text)
-// 	}
-// 	return lines
-// }
-
-// func GenerateStudentReport(pdf *gopdf.GoPdf, logs []*models.PdfFormat) {
-// 	pdf.AddPage()
-// 	DisplayDate(pdf)
-// 	createTableForStudentsfirst(pdf, true)
-
-// 	startY := pdf.GetY() + 0.4
-
-// 	for index, logWithDate := range logs {
-
-// 		rowHeight := 1.0 + (float64(len(splitText(logWithDate.Name, 27))-1) * 0.5)
-
-// 		if startY+rowHeight > PAGE_HEIGHT-MARGIN_BOTTOM {
-// 			pdf.AddPage()
-// 			startY = 5.7
-// 			createTableForStudentsfirst(pdf, false)
-// 		}
-
-// 		startY = createStudentRow(pdf, strconv.Itoa(index+1), logWithDate, startY)
-// 	}
-
-// }
+}

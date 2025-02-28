@@ -4,7 +4,7 @@ import "time"
 
 func ConvertTo12HourFormat(timeStr string) (string, error) {
 	// Parse the input time string in 24-hour format
-	t, err := time.Parse("15:04:05", timeStr)
+	t, err := time.Parse("15:04", timeStr)
 	if err != nil {
 		return "", err
 	}

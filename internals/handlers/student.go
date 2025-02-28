@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -107,7 +108,7 @@ func (h *studentHandler) GetStudentLogsHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h *studentHandler) DownloadPdfHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := h.repo.DownloadPdf(r)
+	pdf, err := h.repo.DownloadPdf(r)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -115,10 +116,10 @@ func (h *studentHandler) DownloadPdfHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// w.Header().Set("Content-Type", "application/pdf")
-
-	// utils.GeneratePdf(w, logs)
-
+	w.Header().Set("Content-Type", "application/pdf")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "pdf download successfull"})
+
+	if _, err := pdf.WriteTo(w); err != nil {
+		log.Println(err)
+	}
 }

@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/go-playground/validator"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/signintech/gopdf"
 )
 
 type studentRepo struct {
@@ -39,6 +39,19 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 		return errors.New("invalid request format")
 	}
 
+	query := database.NewQuery(repo.db)
+
+	isStudentUnitIdExists, err := query.CheckStudentUnitIdExists(createStudentRequest.UnitId, createStudentRequest.StudentUnitId)
+
+	if err != nil {
+		log.Println(err)
+		return errors.New("internal server error")
+	}
+
+	if isStudentUnitIdExists {
+		return errors.New("student unit id already exists")
+	}
+
 	var student models.Student
 
 	unitId := strings.ToLower(createStudentRequest.UnitId)
@@ -48,8 +61,6 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 	student.StudentName = createStudentRequest.StudentName
 	student.StudentUsn = createStudentRequest.StudentUsn
 	student.Department = createStudentRequest.Department
-
-	query := database.NewQuery(repo.db)
 
 	if err := query.CreateNewStudent(&student, unitId, createStudentRequest.FingerprintData); err != nil {
 		log.Println(err)
@@ -141,7 +152,7 @@ func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAtten
 
 }
 
-func (repo *studentRepo) DownloadPdf(r *http.Request) ([][]*models.PdfFormat, error) {
+func (repo *studentRepo) DownloadPdf(r *http.Request) (*gopdf.GoPdf, error) {
 	var pdfDownloadRequest models.PdfDownloadRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&pdfDownloadRequest); err != nil {
@@ -162,21 +173,30 @@ func (repo *studentRepo) DownloadPdf(r *http.Request) ([][]*models.PdfFormat, er
 		return nil, errors.New("invalid request format")
 	}
 
-	log.Println(dates)
-
-	return nil, nil
-
 	query := database.NewQuery(repo.db)
 
-	logs, err := query.GetStudentsAttendanceLogForPdf("vs242s38", "2f706016-10b4-406c-ba00-fb6fa2cb1374", "2025-02-26", "full")
+	pdf := gopdf.GoPdf{}
 
-	if err != nil {
-		log.Fatal(err)
+	if err := utils.InitPdf(&pdf); err != nil {
+		log.Println(err)
+		return nil, err
 	}
 
-	for _, l := range logs {
-		fmt.Println(l)
+	for _, date := range dates {
+		studentAttendanceLogs, err := query.GetStudentsAttendanceLogForPdf(pdfDownloadRequest.UnitId, pdfDownloadRequest.UserId, date, pdfDownloadRequest.Slot)
+
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+
+		if err := utils.GeneratePdf(&pdf, date, strings.ToUpper(pdfDownloadRequest.UnitId), strings.ToUpper(pdfDownloadRequest.Slot), studentAttendanceLogs); err != nil {
+			log.Println(err)
+			return nil, err
+		}
+
 	}
-	return nil, nil
+
+	return &pdf, nil
 
 }

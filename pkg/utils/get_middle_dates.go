@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"time"
 )
 
@@ -18,7 +19,7 @@ func GetMiddleDates(startDate, endDate string) ([]string, error) {
 
 	// Check if start date is after end date
 	if start.After(end) {
-		return nil, err
+		return nil, errors.New("start date cannot be after end date")
 	}
 
 	var dates []string
@@ -35,4 +36,5 @@ func GetMiddleDates(startDate, endDate string) ([]string, error) {
 	dates = append(dates, endDate)
 
 	return dates, nil
+
 }
