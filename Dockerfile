@@ -14,6 +14,6 @@ FROM alpine:latest
 
 WORKDIR /app
 
-COPY --from=build /app/bin/main .
+COPY --from=build /app/bin/main /app/font-family /app/assets .
 
 ENTRYPOINT [ "./main" ]
