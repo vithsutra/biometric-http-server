@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/signintech/gopdf"
+	"github.com/xuri/excelize/v2"
 )
 
 type studentRepo struct {
@@ -198,5 +199,74 @@ func (repo *studentRepo) DownloadPdf(r *http.Request) (*gopdf.GoPdf, error) {
 	}
 
 	return &pdf, nil
+
+}
+
+func (repo *studentRepo) DownloadExcel(r *http.Request) (*excelize.File, error) {
+	var excelRequest models.ExcelDownloadRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&excelRequest); err != nil {
+		return nil, errors.New("invalid json format")
+	}
+
+	validate := validator.New()
+
+	validate.RegisterValidation("slot", utils.SlotValidater)
+
+	if err := validate.Struct(excelRequest); err != nil {
+		return nil, errors.New("invalid request format")
+	}
+
+	dates, err := utils.GetMiddleDates(excelRequest.StartDate, excelRequest.EndDate)
+
+	if err != nil {
+		return nil, errors.New("invalid request format")
+	}
+
+	days, err := utils.GetMiddleDays(excelRequest.StartDate, excelRequest.EndDate)
+
+	if err != nil {
+		return nil, errors.New("invalid request format")
+	}
+
+	excelFile := excelize.NewFile()
+
+	sheetName := "attendance"
+
+	_, err = excelFile.NewSheet(sheetName)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	utils.SetExcelHeader(excelFile, sheetName, days)
+
+	query := database.NewQuery(repo.db)
+
+	students, err := query.GetStudentsForExcel(excelRequest.UnitId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	utils.AddStudentsToExcelFile(excelFile, sheetName, students)
+
+	for col, date := range dates {
+		studentsAttendanceStatus, err := query.GetStudentsAttendanceStatusForExcel(excelRequest.UnitId, excelRequest.UserId, date, excelRequest.Slot)
+
+		if err != nil {
+			log.Println(err)
+			return nil, errors.New("internal server error")
+		}
+
+		if err := utils.AddStudentAttendanceStatusToExcelFile(excelFile, sheetName, col+3, studentsAttendanceStatus); err != nil {
+			log.Println(err)
+			return nil, errors.New("internal server error")
+		}
+	}
+
+	return excelFile, nil
 
 }

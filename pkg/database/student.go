@@ -105,6 +105,8 @@ func (q *Query) GetStudentDetails(unitId string) ([]*models.Student, error) {
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		var student models.Student
 
@@ -133,6 +135,8 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var attendanceLog models.StudentAttendanceLog
@@ -391,4 +395,295 @@ ORDER BY sl.student_usn;
 	}
 
 	return studentLogs, nil
+}
+
+func (q *Query) GetStudentsForExcel(unitId string) ([]*models.ExcelStudentInfo, error) {
+	query :=
+		`WITH student_list AS (
+    SELECT
+        s.student_name,
+        s.student_usn
+    FROM
+        ` + unitId + ` s  -- Replace with your actual unit table name
+)
+SELECT
+    sl.student_name,
+    sl.student_usn
+FROM
+    student_list sl
+ORDER BY
+    sl.student_usn;
+`
+
+	var studentInfos []*models.ExcelStudentInfo
+
+	rows, err := q.db.Query(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var studentInfo models.ExcelStudentInfo
+
+		if err := rows.Scan(&studentInfo.Name, &studentInfo.Usn); err != nil {
+			return nil, err
+		}
+
+		studentInfos = append(studentInfos, &studentInfo)
+	}
+
+	return studentInfos, nil
+}
+
+func (q *Query) GetStudentsAttendanceStatusForExcel(unitId string, userId string, date string, slot string) ([]*models.ExcelStudentAttendanceStatus, error) {
+	if slot == "morning" {
+		query := `WITH student_list AS (
+    SELECT
+        s.student_id,
+        s.student_usn
+    FROM
+        ` + unitId + ` s
+),
+time_reference AS (
+    SELECT
+        morning_start::time AS morning_start,
+        morning_end::time AS morning_end,
+        afternoon_start::time AS afternoon_start,
+        afternoon_end::time AS afternoon_end
+    FROM
+        times
+    WHERE
+        user_id = $2
+),
+student_attendance AS (
+    SELECT
+        a.student_id,
+        a.login::time AS login,
+        a.logout::time AS logout
+    FROM
+        attendance a
+    WHERE
+        a.date = $1
+        AND a.login IS NOT NULL
+        AND a.logout IS NOT NULL
+)
+SELECT
+    sl.student_usn,
+    CASE
+        WHEN COUNT(sa.student_id) = 0 THEN 'A'
+        WHEN COUNT(
+            CASE
+                WHEN sa.login BETWEEN tr.morning_start AND tr.morning_end
+                     AND sa.logout BETWEEN tr.afternoon_start AND tr.afternoon_end
+                THEN 1
+            END
+        ) > 0 THEN 'P'
+        ELSE 'C'
+    END AS student_attendance_status
+FROM
+    student_list sl
+    LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
+    CROSS JOIN time_reference tr
+GROUP BY
+    sl.student_usn
+ORDER BY
+    sl.student_usn;
+
+`
+		rows, err := q.db.Query(query, date, userId)
+
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
+
+		for rows.Next() {
+			var studentAttendanceStatus models.ExcelStudentAttendanceStatus
+
+			if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
+				return nil, err
+			}
+
+			studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
+		}
+
+		return studentsAttendanceStatus, nil
+
+	}
+
+	if slot == "afternoon" {
+		query := `
+WITH student_list AS (
+    SELECT
+        s.student_id,
+        s.student_usn
+    FROM
+        ` + unitId + ` s  -- Replace with your actual unit table name
+),
+time_reference AS (
+    SELECT
+        afternoon_start::time AS afternoon_start,
+        afternoon_end::time AS afternoon_end,
+        evening_start::time AS evening_start,
+        evening_end::time AS evening_end
+    FROM
+        times
+    WHERE
+        user_id = $2  -- Replace with your provided user_id
+),
+student_attendance AS (
+    SELECT
+        a.student_id,
+        a.login::time AS login,
+        a.logout::time AS logout
+    FROM
+        attendance a
+    WHERE
+        a.date = $1  -- Replace with your provided date
+        AND a.login IS NOT NULL
+        AND a.logout IS NOT NULL
+)
+SELECT
+    sl.student_usn,
+    CASE
+        WHEN COUNT(sa.student_id) = 0 THEN 'A'  -- Absent if no entries found
+        WHEN COUNT(
+            CASE
+                WHEN sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
+                     AND sa.logout BETWEEN tr.evening_start AND tr.evening_end
+                THEN 1
+            END
+        ) > 0 THEN 'P'  -- Present if any entry meets both conditions
+        ELSE 'C'  -- Conflict if entries exist but none meet both conditions
+    END AS student_attendance_status
+FROM
+    student_list sl
+    LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
+    CROSS JOIN time_reference tr
+GROUP BY
+    sl.student_usn
+ORDER BY
+    sl.student_usn;
+`
+
+		rows, err := q.db.Query(query, date, userId)
+
+		if err != nil {
+			return nil, err
+		}
+
+		defer rows.Close()
+
+		var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
+
+		for rows.Next() {
+			var studentAttendanceStatus models.ExcelStudentAttendanceStatus
+
+			if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
+				return nil, err
+			}
+
+			studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
+		}
+
+		return studentsAttendanceStatus, nil
+
+	}
+
+	query := `    
+   WITH student_list AS (
+    SELECT
+        s.student_id,
+        s.student_usn
+    FROM
+        ` + unitId + ` s  -- Replace with your actual unit table name
+),
+time_reference AS (
+    SELECT
+        morning_start::time AS morning_start,
+        morning_end::time AS morning_end,
+        afternoon_start::time AS afternoon_start,
+        afternoon_end::time AS afternoon_end,
+        evening_start::time AS evening_start,
+        evening_end::time AS evening_end
+    FROM
+        times
+    WHERE
+        user_id = $2  -- Replace with your provided user_id
+),
+student_attendance AS (
+    SELECT
+        a.student_id,
+        a.login::time AS login,
+        a.logout::time AS logout
+    FROM
+        attendance a
+    WHERE
+        a.date = $1  -- Replace with your provided date
+        AND a.login IS NOT NULL
+        AND a.logout IS NOT NULL
+),
+valid_entries AS (
+    SELECT
+        sa.student_id,
+        COUNT(CASE
+            WHEN sa.login BETWEEN tr.morning_start AND tr.morning_end
+                 AND sa.logout BETWEEN tr.afternoon_start AND tr.afternoon_end
+            THEN 1
+        END) AS morning_afternoon_count,
+        COUNT(CASE
+            WHEN sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
+                 AND sa.logout BETWEEN tr.evening_start AND tr.evening_end
+            THEN 1
+        END) AS afternoon_evening_count
+    FROM
+        student_attendance sa
+        CROSS JOIN time_reference tr
+    GROUP BY
+        sa.student_id
+)
+SELECT
+    sl.student_usn,
+    CASE
+        WHEN COALESCE(ve.morning_afternoon_count, 0) = 0
+             AND COALESCE(ve.afternoon_evening_count, 0) = 0 THEN 'A'  -- Absent if no entries found
+        WHEN ve.morning_afternoon_count >= 1
+             AND ve.afternoon_evening_count >= 1 THEN 'P'  -- Present if at least one valid entry in each slot
+        ELSE 'C'  -- Conflict if entries exist but do not meet the required conditions
+    END AS student_attendance_status
+FROM
+    student_list sl
+    LEFT JOIN valid_entries ve ON sl.student_id = ve.student_id
+ORDER BY
+    sl.student_usn;
+
+`
+
+	rows, err := q.db.Query(query, date, userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
+
+	for rows.Next() {
+		var studentAttendanceStatus models.ExcelStudentAttendanceStatus
+
+		if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
+			return nil, err
+		}
+
+		studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
+	}
+
+	return studentsAttendanceStatus, nil
 }

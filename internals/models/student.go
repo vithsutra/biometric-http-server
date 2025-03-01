@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/signintech/gopdf"
+	"github.com/xuri/excelize/v2"
 )
 
 type CreateStudentRequest struct {
@@ -43,12 +44,30 @@ type PdfDownloadRequest struct {
 	EndDate   string `json:"end_date" validate:"required"`
 }
 
+type ExcelDownloadRequest struct {
+	UnitId    string `json:"unit_id" validate:"required"`
+	UserId    string `json:"user_id" validate:"required"`
+	Slot      string `json:"slot" validate:"required,slot"`
+	StartDate string `json:"start_date" validate:"required"`
+	EndDate   string `json:"end_date" validate:"required"`
+}
+
 type PdfFormat struct {
 	StudentId string `json:"student_id"`
 	Usn       string `json:"usn"`
 	Name      string `json:"name"`
 	Login     string `json:"login"`
 	Logout    string `json:"logout"`
+}
+
+type ExcelStudentInfo struct {
+	Usn  string
+	Name string
+}
+
+type ExcelStudentAttendanceStatus struct {
+	Usn              string
+	AttendanceStatus string
 }
 
 type Student struct {
@@ -66,4 +85,5 @@ type StudentInterface interface {
 	GetStudentDetails(r *http.Request) ([]*Student, error)
 	GetStudentLogs(r *http.Request) ([]*StudentAttendanceLog, error)
 	DownloadPdf(r *http.Request) (*gopdf.GoPdf, error)
+	DownloadExcel(r *http.Request) (*excelize.File, error)
 }

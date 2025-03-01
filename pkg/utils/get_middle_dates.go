@@ -17,6 +17,10 @@ func GetMiddleDates(startDate, endDate string) ([]string, error) {
 		return nil, err
 	}
 
+	if start.Equal(end) {
+		return []string{startDate}, nil
+	}
+
 	// Check if start date is after end date
 	if start.After(end) {
 		return nil, errors.New("start date cannot be after end date")

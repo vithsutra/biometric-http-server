@@ -97,6 +97,8 @@ func (q *Query) GetAllUsers() ([]*models.User, error) {
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		var user models.User
 
@@ -209,6 +211,8 @@ func (q *Query) GetBiometricDevicesForRegisterForm(userId string) ([]string, err
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	var units []string
 
 	for rows.Next() {
@@ -232,6 +236,8 @@ func (q *Query) GetStudentUnitIdsForRegisterForm(unitId string) ([]string, error
 	if err != nil {
 		return nil, err
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var studentUnitId string

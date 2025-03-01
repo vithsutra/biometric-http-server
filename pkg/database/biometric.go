@@ -46,6 +46,8 @@ func (q *Query) GetBiometricDevices(userId string) ([]*models.Biometric, error) 
 		return nil, err
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		var biometric models.Biometric
 		if err := rows.Scan(&biometric.UserId, &biometric.UnitId, &biometric.Online, &biometric.Label); err != nil {
