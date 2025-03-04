@@ -145,7 +145,7 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 			return nil, err
 		}
 
-		if attendanceLog.LoginTime != "pending" {
+		if attendanceLog.LoginTime != "25:00" {
 			t1, err := utils.ConvertTo12HourFormat(attendanceLog.LoginTime)
 
 			if err != nil {
@@ -156,7 +156,7 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 
 		}
 
-		if attendanceLog.LogoutTime != "pending" {
+		if attendanceLog.LogoutTime != "25:00" {
 			t2, err := utils.ConvertTo12HourFormat(attendanceLog.LogoutTime)
 
 			if err != nil {
@@ -174,7 +174,7 @@ func (q *Query) GetStudentsAttendanceLogForPdf(unitId string, userId string, dat
 
 	if slot == "morning" {
 		query := `
-		WITH student_list AS (
+WITH student_list AS (
     SELECT s.student_id, s.student_name, s.student_usn
     FROM ` + unitId + ` s
 ), 
@@ -182,7 +182,10 @@ student_attendance AS (
     SELECT 
         a.student_id, 
         a.login::time AS login, 
-        a.logout::time AS logout
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL -- Mark invalid time as NULL
+            ELSE a.logout::time 
+        END AS logout
     FROM attendance a
     WHERE a.date = $1  -- Replace with your provided date
 ),
@@ -198,7 +201,7 @@ SELECT
     sl.student_usn,
     COALESCE(
         CASE 
-            WHEN sa.logout = '00:00'::time THEN 'pending'
+            WHEN sa.logout IS NULL THEN 'pending' -- If logout is NULL (25:00 case), mark as pending
             WHEN sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
             THEN TO_CHAR(sa.login, 'HH24:MI')  -- Convert time to "hh:mm" format
             ELSE 'pending' 
@@ -207,7 +210,7 @@ SELECT
     ) AS login,
     COALESCE(
         CASE 
-            WHEN sa.logout = '00:00'::time THEN 'pending'
+            WHEN sa.logout IS NULL THEN 'pending' -- If logout is NULL (25:00 case), mark as pending
             WHEN sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
             THEN TO_CHAR(sa.logout, 'HH24:MI')  -- Convert time to "hh:mm" format
             ELSE 'pending' 
@@ -218,6 +221,7 @@ FROM student_list sl
 LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
 CROSS JOIN time_reference tr
 ORDER BY sl.student_usn;
+
 			`
 
 		rows, err := q.db.Query(query, date, userId)
@@ -245,7 +249,7 @@ ORDER BY sl.student_usn;
 
 	if slot == "afternoon" {
 		query := `
-	WITH student_list AS (
+WITH student_list AS (
     SELECT s.student_id, s.student_name, s.student_usn
     FROM ` + unitId + ` s
 ), 
@@ -253,7 +257,10 @@ student_attendance AS (
     SELECT 
         a.student_id, 
         a.login::time AS login, 
-        a.logout::time AS logout
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL -- Convert '25:00' to NULL
+            ELSE a.logout::time 
+        END AS logout
     FROM attendance a
     WHERE a.date = $1  -- Replace with your provided date
 ),
@@ -269,7 +276,7 @@ SELECT
     sl.student_usn,
     COALESCE(
         CASE 
-            WHEN sa.logout = '00:00'::time THEN 'pending'  
+            WHEN sa.logout IS NULL THEN 'pending' -- Handle '25:00' case safely
             WHEN sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
             THEN TO_CHAR(sa.login, 'HH24:MI')  -- Convert time to "hh:mm" format
             ELSE 'pending' 
@@ -278,7 +285,7 @@ SELECT
     ) AS login,
     COALESCE(
         CASE 
-            WHEN sa.logout = '00:00'::time THEN 'pending'  
+            WHEN sa.logout IS NULL THEN 'pending' -- Handle '25:00' case safely
             WHEN sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
             THEN TO_CHAR(sa.logout, 'HH24:MI')  -- Convert time to "hh:mm" format
             ELSE 'pending' 
@@ -325,7 +332,10 @@ student_attendance AS (
     SELECT 
         a.student_id, 
         a.login::time AS login, 
-        a.logout::time AS logout
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL  -- Convert '25:00' to NULL
+            ELSE a.logout::time 
+        END AS logout
     FROM attendance a
     WHERE a.date = $1  -- Replace with your provided date
 ),
@@ -343,12 +353,12 @@ student_entries AS (
         sa.student_id,
         -- Find the first login entry within the morning-afternoon range
         MAX(CASE 
-            WHEN sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
+            WHEN sa.logout IS NOT NULL AND sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
             THEN sa.login 
         END) AS morning_login,
         -- Find the second logout entry within the afternoon-evening range
         MAX(CASE 
-            WHEN sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
+            WHEN sa.logout IS NOT NULL AND sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
             THEN sa.logout 
         END) AS evening_logout
     FROM student_attendance sa
@@ -461,8 +471,14 @@ time_reference AS (
 student_attendance AS (
     SELECT
         a.student_id,
-        a.login::time AS login,
-        a.logout::time AS logout
+        CASE 
+            WHEN a.login = '25:00' THEN NULL -- Handle invalid time
+            ELSE a.login::time 
+        END AS login,
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL -- Handle invalid time
+            ELSE a.logout::time 
+        END AS logout
     FROM
         attendance a
     WHERE
@@ -491,6 +507,7 @@ GROUP BY
     sl.student_usn
 ORDER BY
     sl.student_usn;
+
 
 `
 		rows, err := q.db.Query(query, date, userId)
@@ -540,8 +557,14 @@ time_reference AS (
 student_attendance AS (
     SELECT
         a.student_id,
-        a.login::time AS login,
-        a.logout::time AS logout
+        CASE 
+            WHEN a.login = '25:00' THEN NULL  -- Handle invalid time
+            ELSE a.login::time 
+        END AS login,
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL  -- Handle invalid time
+            ELSE a.logout::time 
+        END AS logout
     FROM
         attendance a
     WHERE
@@ -620,8 +643,14 @@ time_reference AS (
 student_attendance AS (
     SELECT
         a.student_id,
-        a.login::time AS login,
-        a.logout::time AS logout
+        CASE 
+            WHEN a.login = '25:00' THEN NULL  -- Handle invalid time
+            ELSE a.login::time 
+        END AS login,
+        CASE 
+            WHEN a.logout = '25:00' THEN NULL  -- Handle invalid time
+            ELSE a.logout::time 
+        END AS logout
     FROM
         attendance a
     WHERE
@@ -633,12 +662,14 @@ valid_entries AS (
     SELECT
         sa.student_id,
         COUNT(CASE
-            WHEN sa.login BETWEEN tr.morning_start AND tr.morning_end
+            WHEN sa.login IS NOT NULL AND sa.logout IS NOT NULL  -- Ensure valid times
+                 AND sa.login BETWEEN tr.morning_start AND tr.morning_end
                  AND sa.logout BETWEEN tr.afternoon_start AND tr.afternoon_end
             THEN 1
         END) AS morning_afternoon_count,
         COUNT(CASE
-            WHEN sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
+            WHEN sa.login IS NOT NULL AND sa.logout IS NOT NULL  -- Ensure valid times
+                 AND sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
                  AND sa.logout BETWEEN tr.evening_start AND tr.evening_end
             THEN 1
         END) AS afternoon_evening_count
