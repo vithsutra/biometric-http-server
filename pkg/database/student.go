@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
@@ -170,221 +171,39 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 	return studentLogs, nil
 }
 
-func (q *Query) GetStudentsAttendanceLogForPdf(unitId string, userId string, date string, slot string) ([]*models.PdfFormat, error) {
+func (q *Query) GetStudentsCountFromUnit(unitId string) (int32, error) {
+	query := `SELECT COUNT(*) FROM ` + unitId
 
-	if slot == "morning" {
-		query := `
-WITH student_list AS (
-    SELECT s.student_id, s.student_name, s.student_usn
-    FROM ` + unitId + ` s
-), 
-student_attendance AS (
-    SELECT 
-        a.student_id, 
-        a.login::time AS login, 
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL -- Mark invalid time as NULL
-            ELSE a.logout::time 
-        END AS logout
-    FROM attendance a
-    WHERE a.date = $1  -- Replace with your provided date
-),
-time_reference AS (
-    SELECT 
-        morning_start::time AS morning_start, 
-        afternoon_end::time AS afternoon_end 
-    FROM times
-    WHERE user_id = $2  -- Replace with your provided user_id
-)
-SELECT 
-    sl.student_name,
-    sl.student_usn,
-    COALESCE(
-        CASE 
-            WHEN sa.logout IS NULL THEN 'pending' -- If logout is NULL (25:00 case), mark as pending
-            WHEN sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
-            THEN TO_CHAR(sa.login, 'HH24:MI')  -- Convert time to "hh:mm" format
-            ELSE 'pending' 
-        END, 
-        'pending'
-    ) AS login,
-    COALESCE(
-        CASE 
-            WHEN sa.logout IS NULL THEN 'pending' -- If logout is NULL (25:00 case), mark as pending
-            WHEN sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
-            THEN TO_CHAR(sa.logout, 'HH24:MI')  -- Convert time to "hh:mm" format
-            ELSE 'pending' 
-        END, 
-        'pending'
-    ) AS logout
-FROM student_list sl
-LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
-CROSS JOIN time_reference tr
-ORDER BY sl.student_usn;
+	var studentCount int32
 
-			`
-
-		rows, err := q.db.Query(query, date, userId)
-
-		if err != nil {
-			return nil, err
-		}
-
-		defer rows.Close()
-
-		var studentLogs []*models.PdfFormat
-
-		for rows.Next() {
-			var studentLog models.PdfFormat
-
-			if err := rows.Scan(&studentLog.Name, &studentLog.Usn, &studentLog.Login, &studentLog.Logout); err != nil {
-				return nil, err
-			}
-
-			studentLogs = append(studentLogs, &studentLog)
-		}
-
-		return studentLogs, nil
+	if err := q.db.QueryRow(query).Scan(&studentCount); err != nil {
+		return -1, err
 	}
 
-	if slot == "afternoon" {
-		query := `
-WITH student_list AS (
-    SELECT s.student_id, s.student_name, s.student_usn
-    FROM ` + unitId + ` s
-), 
-student_attendance AS (
-    SELECT 
-        a.student_id, 
-        a.login::time AS login, 
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL -- Convert '25:00' to NULL
-            ELSE a.logout::time 
-        END AS logout
-    FROM attendance a
-    WHERE a.date = $1  -- Replace with your provided date
-),
-time_reference AS (
-    SELECT 
-        afternoon_start::time AS afternoon_start, 
-        evening_end::time AS evening_end 
-    FROM times
-    WHERE user_id = $2  -- Replace with your provided user_id
-)
-SELECT 
-    sl.student_name,
-    sl.student_usn,
-    COALESCE(
-        CASE 
-            WHEN sa.logout IS NULL THEN 'pending' -- Handle '25:00' case safely
-            WHEN sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
-            THEN TO_CHAR(sa.login, 'HH24:MI')  -- Convert time to "hh:mm" format
-            ELSE 'pending' 
-        END, 
-        'pending'
-    ) AS login,
-    COALESCE(
-        CASE 
-            WHEN sa.logout IS NULL THEN 'pending' -- Handle '25:00' case safely
-            WHEN sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
-            THEN TO_CHAR(sa.logout, 'HH24:MI')  -- Convert time to "hh:mm" format
-            ELSE 'pending' 
-        END, 
-        'pending'
-    ) AS logout
-FROM student_list sl
-LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
-CROSS JOIN time_reference tr
-ORDER BY sl.student_usn;
+	return studentCount, nil
 
-	`
+}
 
-		rows, err := q.db.Query(query, date, userId)
-
-		if err != nil {
-			return nil, err
-		}
-
-		defer rows.Close()
-
-		var studentLogs []*models.PdfFormat
-
-		for rows.Next() {
-			var studentLog models.PdfFormat
-
-			if err := rows.Scan(&studentLog.Name, &studentLog.Usn, &studentLog.Login, &studentLog.Logout); err != nil {
-				return nil, err
-			}
-
-			studentLogs = append(studentLogs, &studentLog)
-		}
-
-		return studentLogs, nil
-
+func (q *Query) GetUserStandardTime(userId string) (*models.UserTime, error) {
+	query := `SELECT morning_start,morning_end,afternoon_start,afternoon_end,evening_start,evening_end FROM times where user_id=$1`
+	var userTime models.UserTime
+	if err := q.db.QueryRow(query, userId).Scan(
+		&userTime.MorningStart,
+		&userTime.MorningEnd,
+		&userTime.AfterNoonStart,
+		&userTime.AfterNoonEnd,
+		&userTime.EveningStart,
+		&userTime.EveningEnd,
+	); err != nil {
+		return nil, err
 	}
+	return &userTime, nil
+}
 
-	query := `
-	WITH student_list AS (
-    SELECT s.student_id, s.student_name, s.student_usn
-    FROM ` + unitId + ` s
-), 
-student_attendance AS (
-    SELECT 
-        a.student_id, 
-        a.login::time AS login, 
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL  -- Convert '25:00' to NULL
-            ELSE a.logout::time 
-        END AS logout
-    FROM attendance a
-    WHERE a.date = $1  -- Replace with your provided date
-),
-time_reference AS (
-    SELECT 
-        morning_start::time AS morning_start, 
-        afternoon_end::time AS afternoon_end,
-        afternoon_start::time AS afternoon_start, 
-        evening_end::time AS evening_end 
-    FROM times
-    WHERE user_id = $2  -- Replace with your provided user_id
-),
-student_entries AS (
-    SELECT 
-        sa.student_id,
-        -- Find the first login entry within the morning-afternoon range
-        MAX(CASE 
-            WHEN sa.logout IS NOT NULL AND sa.login >= tr.morning_start AND sa.logout <= tr.afternoon_end 
-            THEN sa.login 
-        END) AS morning_login,
-        -- Find the second logout entry within the afternoon-evening range
-        MAX(CASE 
-            WHEN sa.logout IS NOT NULL AND sa.login >= tr.afternoon_start AND sa.logout <= tr.evening_end 
-            THEN sa.logout 
-        END) AS evening_logout
-    FROM student_attendance sa
-    CROSS JOIN time_reference tr
-    GROUP BY sa.student_id
-)
-SELECT 
-    sl.student_name,
-    sl.student_usn,
-    CASE 
-        WHEN se.morning_login IS NOT NULL AND se.evening_logout IS NOT NULL 
-        THEN TO_CHAR(se.morning_login, 'HH24:MI')  -- Convert time to "hh:mm" format
-        ELSE 'pending' 
-    END AS login,
-    CASE 
-        WHEN se.morning_login IS NOT NULL AND se.evening_logout IS NOT NULL 
-        THEN TO_CHAR(se.evening_logout, 'HH24:MI')  -- Convert time to "hh:mm" format
-        ELSE 'pending' 
-    END AS logout
-FROM student_list sl
-LEFT JOIN student_entries se ON sl.student_id = se.student_id
-ORDER BY sl.student_usn;
+func (q *Query) GetStudentsForPdf(unitId string, studentsCount int32) (map[string]*models.PdfFormat, error) {
+	query := `SELECT student_id, student_name, student_usn FROM ` + unitId + ` ORDER BY student_usn`
 
-	`
-
-	rows, err := q.db.Query(query, date, userId)
+	rows, err := q.db.Query(query)
 
 	if err != nil {
 		return nil, err
@@ -392,19 +211,107 @@ ORDER BY sl.student_usn;
 
 	defer rows.Close()
 
-	var studentLogs []*models.PdfFormat
+	var pdfFormats = make(map[string]*models.PdfFormat, studentsCount)
 
 	for rows.Next() {
-		var studentLog models.PdfFormat
-
-		if err := rows.Scan(&studentLog.Name, &studentLog.Usn, &studentLog.Login, &studentLog.Logout); err != nil {
+		var pdfFormat models.PdfFormat
+		if err := rows.Scan(&pdfFormat.StudentId, &pdfFormat.Name, &pdfFormat.Usn); err != nil {
 			return nil, err
 		}
 
-		studentLogs = append(studentLogs, &studentLog)
+		pdfFormats[pdfFormat.StudentId] = &pdfFormat
 	}
 
-	return studentLogs, nil
+	return pdfFormats, nil
+}
+
+func (q *Query) GetStudentsAttendanceLogForPdf(studentsCount int32, userTime *models.UserTime, pdfFormats map[string]*models.PdfFormat, date string, slot string) error {
+
+	var wg sync.WaitGroup
+
+	for studentId, _ := range pdfFormats {
+
+		wg.Add(1)
+
+		go func(wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			query := `SELECT login,logout FROM attendance WHERE date=$1 AND student_id=$2`
+			rows, err := q.db.Query(query, date, studentId)
+			if err != nil {
+				return
+			}
+
+			defer rows.Close()
+
+			var isStudentEntryValid bool
+
+			for rows.Next() {
+
+				var studentAttendanceLog models.StudentAttendanceLog
+
+				if err := rows.Scan(&studentAttendanceLog.LoginTime, &studentAttendanceLog.LogoutTime); err != nil {
+					return
+				}
+
+				if studentAttendanceLog.LogoutTime == "25:00" {
+					continue
+				}
+
+				if slot == "morning" {
+
+					entryValid, err := utils.CompareWithStandardTime(userTime.MorningStart, userTime.AfterNoonEnd, studentAttendanceLog.LoginTime, studentAttendanceLog.LogoutTime)
+
+					if err != nil {
+						return
+					}
+
+					if entryValid {
+						isStudentEntryValid = true
+						pdfFormats[studentId].Login = studentAttendanceLog.LoginTime
+						pdfFormats[studentId].Logout = studentAttendanceLog.LogoutTime
+						break
+					}
+
+				} else if slot == "evening" {
+					entryValid, err := utils.CompareWithStandardTime(userTime.AfterNoonStart, userTime.EveningEnd, studentAttendanceLog.LoginTime, studentAttendanceLog.LogoutTime)
+
+					if err != nil {
+						return
+					}
+
+					if entryValid {
+						isStudentEntryValid = true
+						pdfFormats[studentId].Login = studentAttendanceLog.LoginTime
+						pdfFormats[studentId].Logout = studentAttendanceLog.LogoutTime
+						break
+					}
+
+				} else {
+					entryValid, err := utils.CompareWithStandardTime(userTime.MorningStart, userTime.EveningEnd, studentAttendanceLog.LoginTime, studentAttendanceLog.LogoutTime)
+
+					if err != nil {
+						return
+					}
+
+					if entryValid {
+						isStudentEntryValid = true
+						pdfFormats[studentId].Login = studentAttendanceLog.LoginTime
+						pdfFormats[studentId].Logout = studentAttendanceLog.LogoutTime
+						break
+					}
+				}
+			}
+
+			if !isStudentEntryValid {
+				pdfFormats[studentId].Login = "pending"
+				pdfFormats[studentId].Logout = "pending"
+			}
+		}(&wg)
+	}
+
+	wg.Wait()
+	return nil
 }
 
 func (q *Query) GetStudentsForExcel(unitId string) ([]*models.ExcelStudentInfo, error) {
@@ -449,272 +356,5 @@ ORDER BY
 }
 
 func (q *Query) GetStudentsAttendanceStatusForExcel(unitId string, userId string, date string, slot string) ([]*models.ExcelStudentAttendanceStatus, error) {
-	if slot == "morning" {
-		query := `WITH student_list AS (
-    SELECT
-        s.student_id,
-        s.student_usn
-    FROM
-        ` + unitId + ` s
-),
-time_reference AS (
-    SELECT
-        morning_start::time AS morning_start,
-        morning_end::time AS morning_end,
-        afternoon_start::time AS afternoon_start,
-        afternoon_end::time AS afternoon_end
-    FROM
-        times
-    WHERE
-        user_id = $2
-),
-student_attendance AS (
-    SELECT
-        a.student_id,
-        CASE 
-            WHEN a.login = '25:00' THEN NULL -- Handle invalid time
-            ELSE a.login::time 
-        END AS login,
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL -- Handle invalid time
-            ELSE a.logout::time 
-        END AS logout
-    FROM
-        attendance a
-    WHERE
-        a.date = $1
-        AND a.login IS NOT NULL
-        AND a.logout IS NOT NULL
-)
-SELECT
-    sl.student_usn,
-    CASE
-        WHEN COUNT(sa.student_id) = 0 THEN 'A'
-        WHEN COUNT(
-            CASE
-                WHEN sa.login BETWEEN tr.morning_start AND tr.morning_end
-                     AND sa.logout BETWEEN tr.afternoon_start AND tr.afternoon_end
-                THEN 1
-            END
-        ) > 0 THEN 'P'
-        ELSE 'C'
-    END AS student_attendance_status
-FROM
-    student_list sl
-    LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
-    CROSS JOIN time_reference tr
-GROUP BY
-    sl.student_usn
-ORDER BY
-    sl.student_usn;
-
-
-`
-		rows, err := q.db.Query(query, date, userId)
-
-		if err != nil {
-			return nil, err
-		}
-
-		defer rows.Close()
-
-		var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
-
-		for rows.Next() {
-			var studentAttendanceStatus models.ExcelStudentAttendanceStatus
-
-			if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
-				return nil, err
-			}
-
-			studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
-		}
-
-		return studentsAttendanceStatus, nil
-
-	}
-
-	if slot == "afternoon" {
-		query := `
-WITH student_list AS (
-    SELECT
-        s.student_id,
-        s.student_usn
-    FROM
-        ` + unitId + ` s  -- Replace with your actual unit table name
-),
-time_reference AS (
-    SELECT
-        afternoon_start::time AS afternoon_start,
-        afternoon_end::time AS afternoon_end,
-        evening_start::time AS evening_start,
-        evening_end::time AS evening_end
-    FROM
-        times
-    WHERE
-        user_id = $2  -- Replace with your provided user_id
-),
-student_attendance AS (
-    SELECT
-        a.student_id,
-        CASE 
-            WHEN a.login = '25:00' THEN NULL  -- Handle invalid time
-            ELSE a.login::time 
-        END AS login,
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL  -- Handle invalid time
-            ELSE a.logout::time 
-        END AS logout
-    FROM
-        attendance a
-    WHERE
-        a.date = $1  -- Replace with your provided date
-        AND a.login IS NOT NULL
-        AND a.logout IS NOT NULL
-)
-SELECT
-    sl.student_usn,
-    CASE
-        WHEN COUNT(sa.student_id) = 0 THEN 'A'  -- Absent if no entries found
-        WHEN COUNT(
-            CASE
-                WHEN sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
-                     AND sa.logout BETWEEN tr.evening_start AND tr.evening_end
-                THEN 1
-            END
-        ) > 0 THEN 'P'  -- Present if any entry meets both conditions
-        ELSE 'C'  -- Conflict if entries exist but none meet both conditions
-    END AS student_attendance_status
-FROM
-    student_list sl
-    LEFT JOIN student_attendance sa ON sl.student_id = sa.student_id
-    CROSS JOIN time_reference tr
-GROUP BY
-    sl.student_usn
-ORDER BY
-    sl.student_usn;
-`
-
-		rows, err := q.db.Query(query, date, userId)
-
-		if err != nil {
-			return nil, err
-		}
-
-		defer rows.Close()
-
-		var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
-
-		for rows.Next() {
-			var studentAttendanceStatus models.ExcelStudentAttendanceStatus
-
-			if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
-				return nil, err
-			}
-
-			studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
-		}
-
-		return studentsAttendanceStatus, nil
-
-	}
-
-	query := `    
-   WITH student_list AS (
-    SELECT
-        s.student_id,
-        s.student_usn
-    FROM
-        ` + unitId + ` s  -- Replace with your actual unit table name
-),
-time_reference AS (
-    SELECT
-        morning_start::time AS morning_start,
-        morning_end::time AS morning_end,
-        afternoon_start::time AS afternoon_start,
-        afternoon_end::time AS afternoon_end,
-        evening_start::time AS evening_start,
-        evening_end::time AS evening_end
-    FROM
-        times
-    WHERE
-        user_id = $2  -- Replace with your provided user_id
-),
-student_attendance AS (
-    SELECT
-        a.student_id,
-        CASE 
-            WHEN a.login = '25:00' THEN NULL  -- Handle invalid time
-            ELSE a.login::time 
-        END AS login,
-        CASE 
-            WHEN a.logout = '25:00' THEN NULL  -- Handle invalid time
-            ELSE a.logout::time 
-        END AS logout
-    FROM
-        attendance a
-    WHERE
-        a.date = $1  -- Replace with your provided date
-        AND a.login IS NOT NULL
-        AND a.logout IS NOT NULL
-),
-valid_entries AS (
-    SELECT
-        sa.student_id,
-        COUNT(CASE
-            WHEN sa.login IS NOT NULL AND sa.logout IS NOT NULL  -- Ensure valid times
-                 AND sa.login BETWEEN tr.morning_start AND tr.morning_end
-                 AND sa.logout BETWEEN tr.afternoon_start AND tr.afternoon_end
-            THEN 1
-        END) AS morning_afternoon_count,
-        COUNT(CASE
-            WHEN sa.login IS NOT NULL AND sa.logout IS NOT NULL  -- Ensure valid times
-                 AND sa.login BETWEEN tr.afternoon_start AND tr.afternoon_end
-                 AND sa.logout BETWEEN tr.evening_start AND tr.evening_end
-            THEN 1
-        END) AS afternoon_evening_count
-    FROM
-        student_attendance sa
-        CROSS JOIN time_reference tr
-    GROUP BY
-        sa.student_id
-)
-SELECT
-    sl.student_usn,
-    CASE
-        WHEN COALESCE(ve.morning_afternoon_count, 0) = 0
-             AND COALESCE(ve.afternoon_evening_count, 0) = 0 THEN 'A'  -- Absent if no entries found
-        WHEN ve.morning_afternoon_count >= 1
-             AND ve.afternoon_evening_count >= 1 THEN 'P'  -- Present if at least one valid entry in each slot
-        ELSE 'C'  -- Conflict if entries exist but do not meet the required conditions
-    END AS student_attendance_status
-FROM
-    student_list sl
-    LEFT JOIN valid_entries ve ON sl.student_id = ve.student_id
-ORDER BY
-    sl.student_usn;
-
-`
-
-	rows, err := q.db.Query(query, date, userId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	var studentsAttendanceStatus []*models.ExcelStudentAttendanceStatus
-
-	for rows.Next() {
-		var studentAttendanceStatus models.ExcelStudentAttendanceStatus
-
-		if err := rows.Scan(&studentAttendanceStatus.Usn, &studentAttendanceStatus.AttendanceStatus); err != nil {
-			return nil, err
-		}
-
-		studentsAttendanceStatus = append(studentsAttendanceStatus, &studentAttendanceStatus)
-	}
-
-	return studentsAttendanceStatus, nil
+	return nil, nil
 }

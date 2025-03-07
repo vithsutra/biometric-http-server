@@ -52,6 +52,21 @@ type ExcelDownloadRequest struct {
 	EndDate   string `json:"end_date" validate:"required"`
 }
 
+type UserTime struct {
+	MorningStart   string
+	MorningEnd     string
+	AfterNoonStart string
+	AfterNoonEnd   string
+	EveningStart   string
+	EveningEnd     string
+}
+
+type StudentForPdf struct {
+	StudentId string
+	Name      string
+	Usn       string
+}
+
 type PdfFormat struct {
 	StudentId string `json:"student_id"`
 	Usn       string `json:"usn"`

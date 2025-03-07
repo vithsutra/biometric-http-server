@@ -183,15 +183,59 @@ func (repo *studentRepo) DownloadPdf(r *http.Request) (*gopdf.GoPdf, error) {
 		return nil, err
 	}
 
-	for _, date := range dates {
-		studentAttendanceLogs, err := query.GetStudentsAttendanceLogForPdf(pdfDownloadRequest.UnitId, pdfDownloadRequest.UserId, date, pdfDownloadRequest.Slot)
+	userTimeChann := make(chan *models.UserTime)
+
+	go func() {
+		userTime, err := query.GetUserStandardTime(pdfDownloadRequest.UserId)
+		if err != nil {
+			userTimeChann <- nil
+			return
+		}
+
+		userTimeChann <- userTime
+		return
+	}()
+
+	studentsCount, err := query.GetStudentsCountFromUnit(pdfDownloadRequest.UnitId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	pdfFormatsChann := make(chan map[string]*models.PdfFormat)
+
+	go func() {
+		pdfFormats, err := query.GetStudentsForPdf(pdfDownloadRequest.UnitId, studentsCount)
 
 		if err != nil {
+			pdfFormatsChann <- nil
+			return
+		}
+
+		pdfFormatsChann <- pdfFormats
+		return
+	}()
+
+	userTime := <-userTimeChann
+
+	if userTime == nil {
+		return nil, errors.New("error occurred with database")
+	}
+
+	pdfFormats := <-pdfFormatsChann
+
+	if pdfFormats == nil {
+		return nil, errors.New("error occurred with database")
+	}
+
+	for _, date := range dates {
+		if err := query.GetStudentsAttendanceLogForPdf(studentsCount, userTime, pdfFormats, date, pdfDownloadRequest.Slot); err != nil {
 			log.Println(err)
 			return nil, err
 		}
 
-		if err := utils.GeneratePdf(&pdf, date, strings.ToUpper(pdfDownloadRequest.UnitId), strings.ToUpper(pdfDownloadRequest.Slot), studentAttendanceLogs); err != nil {
+		if err := utils.GeneratePdf(&pdf, date, strings.ToUpper(pdfDownloadRequest.UnitId), strings.ToUpper(pdfDownloadRequest.Slot), pdfFormats); err != nil {
 			log.Println(err)
 			return nil, err
 		}

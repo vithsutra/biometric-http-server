@@ -97,8 +97,8 @@ func InitPdf(pdf *gopdf.GoPdf) error {
 
 }
 
-func GeneratePdf(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, studentsAttendanceLogs []*models.PdfFormat) error {
-	if err := generateStudentReport(pdf, date, machineId, slotStatus, studentsAttendanceLogs); err != nil {
+func GeneratePdf(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, pdfFormats map[string]*models.PdfFormat) error {
+	if err := generateStudentReport(pdf, date, machineId, slotStatus, pdfFormats); err != nil {
 		return err
 	}
 
@@ -404,7 +404,7 @@ func splitText(text string, maxLen int) []string {
 	return lines
 }
 
-func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, studentsAttendanceLogs []*models.PdfFormat) error {
+func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slotStatus string, pdfFormats map[string]*models.PdfFormat) error {
 	pdf.AddPage()
 	if err := displayDate(pdf, date, machineId, slotStatus); err != nil {
 		return err
@@ -416,27 +416,28 @@ func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slot
 
 	startY := pdf.GetY() + 0.4
 
-	for index, studentAttendanceLog := range studentsAttendanceLogs {
+	var index = 0
+	for studentIdKey, _ := range pdfFormats {
 
-		if studentAttendanceLog.Login != "pending" {
-			t, err := ConvertTo12HourFormat(studentAttendanceLog.Login)
+		if pdfFormats[studentIdKey].Login != "pending" {
+			t, err := ConvertTo12HourFormat(pdfFormats[studentIdKey].Login)
 			if err != nil {
 				return err
 			}
 
-			studentAttendanceLog.Login = t
+			pdfFormats[studentIdKey].Login = t
 		}
 
-		if studentAttendanceLog.Logout != "pending" {
-			t, err := ConvertTo12HourFormat(studentAttendanceLog.Logout)
+		if pdfFormats[studentIdKey].Logout != "pending" {
+			t, err := ConvertTo12HourFormat(pdfFormats[studentIdKey].Logout)
 			if err != nil {
 				return err
 			}
 
-			studentAttendanceLog.Logout = t
+			pdfFormats[studentIdKey].Logout = t
 		}
 
-		rowHeight := 1.0 + (float64(len(splitText(studentAttendanceLog.Name, 27))-1) * 0.5)
+		rowHeight := 1.0 + (float64(len(splitText(pdfFormats[studentIdKey].Name, 27))-1) * 0.5)
 
 		if startY+rowHeight > PAGE_HEIGHT-MARGIN_BOTTOM {
 			pdf.AddPage()
@@ -446,13 +447,14 @@ func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slot
 			}
 		}
 
-		startYNewPoint, err := createStudentRow(pdf, strconv.Itoa(index+1), studentAttendanceLog, startY)
+		startYNewPoint, err := createStudentRow(pdf, strconv.Itoa(index+1), pdfFormats[studentIdKey], startY)
 
 		if err != nil {
 			return err
 		}
 
 		startY = startYNewPoint
+		index++
 	}
 
 	return nil
