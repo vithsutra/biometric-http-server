@@ -43,26 +43,26 @@ jobs:
       - name: Setup Deploy Environment in GCE Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: "${{ secrets.GCP_INSTANCE_HOST }}"
-          username: "${{ secrets.GCP_INSTANCE_USERNAME }}"
-          key: "${{ secrets.GCE_SSH_PRIVATE_KEY }}"
+          host: "${{ secrets.VM_INSTANCE_HOST }}"
+          username: "${{ secrets.VM_INSTANCE_USERNAME }}"
+          key: "${{ secrets.VM_SSH_PRIVATE_KEY }}"
           script: |
             echo "Connected to VM"
             mkdir -p ~/biometric/biometric-http-server-deployment
 
       - name: Upload .env to GCE Instance
         run: |
-          echo "${{ secrets.GCE_SSH_PRIVATE_KEY }}" > biometric_ssh_key
+          echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > biometric_ssh_key
           chmod 600 biometric_ssh_key
-          scp -o StrictHostKeyChecking=no -i biometric_ssh_key .env ${{ secrets.GCP_INSTANCE_USERNAME }}@${{ secrets.GCP_INSTANCE_HOST }}:~/biometric/biometric-http-server-deployment/.env
+          scp -o StrictHostKeyChecking=no -i biometric_ssh_key .env ${{ secrets.VM_INSTANCE_USERNAME }}@${{ secrets.VM_INSTANCE_HOST }}:~/biometric/biometric-http-server-deployment/.env
           rm biometric_ssh_key
 
       - name: Deploying Docker Image on GCE Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: "${{ secrets.GCP_INSTANCE_HOST }}"
-          username: "${{ secrets.GCP_INSTANCE_USERNAME }}"
-          key: "${{ secrets.GCE_SSH_PRIVATE_KEY }}"
+          host: "${{ secrets.VM_INSTANCE_HOST }}"
+          username: "${{ secrets.VM_INSTANCE_USERNAME }}"
+          key: "${{ secrets.VM_SSH_PRIVATE_KEY }}"
           script: |
             IMAGE_NAME=docker.io/vithsutratechnologies/biometric-http-server:latest
             docker pull $IMAGE_NAME
