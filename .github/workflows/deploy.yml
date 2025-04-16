@@ -24,7 +24,7 @@ jobs:
           docker push $IMAGE_NAME
 
   deploy:
-    name: Deploy Docker Image to GCE
+    name: Deploy Docker Image to Cloud
     runs-on: ubuntu-latest
     needs: build
 
@@ -40,7 +40,7 @@ jobs:
           echo "HOST_EMAIL=${{ secrets.HOST_EMAIL }}" >> .env
           echo "APP_PASSWORD=${{ secrets.APP_PASSWORD }}" >> .env
 
-      - name: Setup Deploy Environment in GCE Instance
+      - name: Setup Deploy Environment in Cloud Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: "${{ secrets.VM_INSTANCE_HOST }}"
@@ -50,14 +50,14 @@ jobs:
             echo "Connected to VM"
             mkdir -p ~/biometric/biometric-http-server-deployment
 
-      - name: Upload .env to GCE Instance
+      - name: Upload .env to Cloud Instance
         run: |
           echo "${{ secrets.VM_SSH_PRIVATE_KEY }}" > biometric_ssh_key
           chmod 600 biometric_ssh_key
           scp -o StrictHostKeyChecking=no -i biometric_ssh_key .env ${{ secrets.VM_INSTANCE_USERNAME }}@${{ secrets.VM_INSTANCE_HOST }}:~/biometric/biometric-http-server-deployment/.env
           rm biometric_ssh_key
 
-      - name: Deploying Docker Image on GCE Instance
+      - name: Deploying Docker Image on Cloud Instance
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: "${{ secrets.VM_INSTANCE_HOST }}"
