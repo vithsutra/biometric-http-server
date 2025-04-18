@@ -2,12 +2,17 @@ package database
 
 import (
 	"fmt"
+	"regexp"
 	"sync"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
 )
 
+func isValidIdentifier(id string) bool {
+	re := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+	return re.MatchString(id)
+}
 func (q *Query) CheckStudentUnitIdExists(unitId string, studentUnitId string) (bool, error) {
 	query := `SELECT EXISTS ( SELECT 1 FROM  ` + unitId + ` WHERE student_unit_id = $1)`
 
@@ -312,49 +317,4 @@ func (q *Query) GetStudentsAttendanceLogForPdf(studentsCount int32, userTime *mo
 
 	wg.Wait()
 	return nil
-}
-
-func (q *Query) GetStudentsForExcel(unitId string) ([]*models.ExcelStudentInfo, error) {
-	query :=
-		`WITH student_list AS (
-    SELECT
-        s.student_name,
-        s.student_usn
-    FROM
-        ` + unitId + ` s  -- Replace with your actual unit table name
-)
-SELECT
-    sl.student_name,
-    sl.student_usn
-FROM
-    student_list sl
-ORDER BY
-    sl.student_usn;
-`
-
-	var studentInfos []*models.ExcelStudentInfo
-
-	rows, err := q.db.Query(query)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var studentInfo models.ExcelStudentInfo
-
-		if err := rows.Scan(&studentInfo.Name, &studentInfo.Usn); err != nil {
-			return nil, err
-		}
-
-		studentInfos = append(studentInfos, &studentInfo)
-	}
-
-	return studentInfos, nil
-}
-
-func (q *Query) GetStudentsAttendanceStatusForExcel(unitId string, userId string, date string, slot string) ([]*models.ExcelStudentAttendanceStatus, error) {
-	return nil, nil
 }

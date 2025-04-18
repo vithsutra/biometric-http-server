@@ -1,129 +1,106 @@
 package repository
 
-// import (
-// 	"database/sql"
-// 	"encoding/json"
-// 	"fmt"
-// 	"io"
-// 	"net/http"
-// 	"time"
+import (
+	"database/sql"
+	"fmt"
+	"time"
 
-// 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
-// 	"github.com/VsenseTechnologies/biometric_http_server/pkg/database"
-// 	"github.com/xuri/excelize/v2"
-// )
+	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
+	"github.com/xuri/excelize/v2"
+)
 
-// type ExcelRepo struct {
-// 	db *sql.DB
-// }
+type ExcelRepository struct {
+	DB *sql.DB
+}
 
-// func NewExcelRepo(db *sql.DB) *ExcelRepo {
-// 	return &ExcelRepo{
-// 		db,
-// 	}
-// }
+func NewExcelRepository(db *sql.DB) *ExcelRepository {
+	return &ExcelRepository{DB: db}
+}
+func (r *ExcelRepository) DownloadExcel(req *models.ExcelDownloadRequest) (*excelize.File, error) {
+	// Parse date range
+	startDate, _ := time.Parse("2006-01-02", req.StartDate)
+	endDate, _ := time.Parse("2006-01-02", req.EndDate)
 
-// func (er *ExcelRepo) GenerateExcelReport(r *http.Request) (*excelize.File, string, error) {
-// 	var newExcel models.ExcelDetails
+	// Step 1: Get distinct student info
+	studentsQuery := `
+	SELECT DISTINCT f.student_unit_id AS usn, COALESCE(s.student_name, 'N/A') AS name
+	FROM fingerprintdata f
+	LEFT JOIN ` + req.UnitId + ` s ON s.student_unit_id = f.student_unit_id
+	WHERE f.unit_id = $1
+	ORDER BY f.student_unit_id;
+	`
 
-// 	// Read and decode the request body
-// 	body, err := io.ReadAll(r.Body)
-// 	if err != nil {
-// 		return nil, "", fmt.Errorf("error reading request body: %w", err)
-// 	}
-// 	defer r.Body.Close()
+	studentsRows, err := r.DB.Query(studentsQuery, req.UnitId)
+	if err != nil {
+		return nil, err
+	}
+	defer studentsRows.Close()
 
-// 	if len(body) == 0 {
-// 		return nil, "", fmt.Errorf("empty request body")
-// 	}
+	type student struct {
+		USN  string
+		Name string
+	}
+	var students []student
 
-// 	if err := json.Unmarshal(body, &newExcel); err != nil {
-// 		return nil, "", fmt.Errorf("error decoding request body: %w", err)
-// 	}
+	for studentsRows.Next() {
+		var s student
+		if err := studentsRows.Scan(&s.USN, &s.Name); err != nil {
+			return nil, err
+		}
+		students = append(students, s)
+	}
 
-// 	// Fetch attendance records
-// 	query := database.NewQuery(er.db)
-// 	attendance, err := query.GenerateExcelReport(newExcel.UnitId, newExcel.StartDate, newExcel.EndDate)
-// 	if err != nil {
-// 		return nil, "", err
-// 	}
+	// Step 2: Create Excel file
+	file := excelize.NewFile()
+	sheet := file.GetSheetName(0)
 
-// 	// Parse start and end dates
-// 	startDate, err := time.Parse("2006-01-02", newExcel.StartDate)
-// 	if err != nil {
-// 		return nil, "", fmt.Errorf("invalid start date: %w", err)
-// 	}
-// 	endDate, err := time.Parse("2006-01-02", newExcel.EndDate)
-// 	if err != nil {
-// 		return nil, "", fmt.Errorf("invalid end date: %w", err)
-// 	}
+	// Step 3: Build headers (Name, USN, Date1, Date2, ...)
+	headers := []string{"Name", "USN"}
+	dateMap := make(map[int]string) // index -> date string
 
-// 	// Generate date range for column headers
-// 	dates := []string{}
-// 	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
-// 		dates = append(dates, d.Format("02")) // Day of the month
-// 	}
+	// Adding dates in headers
+	colIndex := 3
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		dateStr := d.Format("2006-01-02")
+		headers = append(headers, dateStr)
+		dateMap[colIndex] = dateStr
+		colIndex++
+	}
 
-// 	// Create Excel file and sheet
-// 	f := excelize.NewFile()
-// 	sheetName := "Attendance"
-// 	f.NewSheet(sheetName)
-// 	f.DeleteSheet("Sheet1")
+	// Set header cells
+	for i, h := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		file.SetCellValue(sheet, cell, h)
+	}
 
-// 	// Set headers
-// 	headers := append([]string{"Name", "USN"}, dates...)
-// 	for colIdx, header := range headers {
-// 		cell, _ := excelize.CoordinatesToCellName(colIdx+1, 1)
-// 		if err := f.SetCellValue(sheetName, cell, header); err != nil {
-// 			return nil, "", err
-// 		}
-// 		style, _ := f.NewStyle(&excelize.Style{
-// 			Font:      &excelize.Font{Bold: true, Color: "FFFFFF"},
-// 			Fill:      excelize.Fill{Type: "pattern", Color: []string{"000000"}, Pattern: 1},
-// 			Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center"},
-// 		})
-// 		f.SetCellStyle(sheetName, cell, cell, style)
-// 	}
+	// Step 4: Fill each student row
+	row := 2
+	for _, stu := range students {
+		file.SetCellValue(sheet, fmt.Sprintf("A%d", row), stu.Name)
+		file.SetCellValue(sheet, fmt.Sprintf("B%d", row), stu.USN)
 
-// 	// Adjust column widths
-// 	f.SetColWidth(sheetName, "A", "A", 20)
-// 	f.SetColWidth(sheetName, "B", "B", 15)
-// 	for i := 3; i <= len(headers); i++ {
-// 		col, _ := excelize.ColumnNumberToName(i)
-// 		f.SetColWidth(sheetName, col, col, 5)
-// 	}
+		// Step 5: Query attendance per day and fill attendance columns
+		for col, date := range dateMap {
+			var status string
+			query := `
+			SELECT CASE
+				WHEN login IS NOT NULL THEN 'Present'
+				ELSE 'Absent'
+			END AS status
+			FROM attendance
+			WHERE student_id = (SELECT student_id FROM fingerprintdata WHERE student_unit_id = $1 AND unit_id = $2 LIMIT 1)
+			AND unit_id = $2 AND date = $3
+			LIMIT 1;
+			`
+			err := r.DB.QueryRow(query, stu.USN, req.UnitId, date).Scan(&status)
+			if err != nil {
+				status = "Absent" // if no record found, mark as Absent
+			}
+			cell, _ := excelize.CoordinatesToCellName(col, row)
+			file.SetCellValue(sheet, cell, status)
+		}
+		row++
+	}
 
-// 	// Map attendance records
-// 	studentMap := make(map[string]map[string]string)
-// 	for _, record := range attendance {
-// 		if _, exists := studentMap[record.StudentUsn]; !exists {
-// 			studentMap[record.StudentUsn] = map[string]string{
-// 				"Name": record.StudentName,
-// 			}
-// 		}
-// 		studentMap[record.StudentUsn][record.Date] = record.Status
-// 	}
-
-// 	// Populate rows with student data
-// 	row := 2
-// 	for usn, data := range studentMap {
-// 		if err := f.SetCellValue(sheetName, fmt.Sprintf("A%d", row), data["Name"]); err != nil {
-// 			return nil, "", err
-// 		}
-// 		if err := f.SetCellValue(sheetName, fmt.Sprintf("B%d", row), usn); err != nil {
-// 			return nil, "", err
-// 		}
-
-// 		for colIdx, day := range dates {
-// 			status := data[day]
-// 			cell, _ := excelize.CoordinatesToCellName(colIdx+3, row)
-// 			if err := f.SetCellValue(sheetName, cell, status); err != nil {
-// 				return nil, "", err
-// 			}
-// 		}
-// 		row++
-// 	}
-
-// 	// Return the Excel file
-// 	return f, newExcel.StartDate + "-" + newExcel.EndDate + "-Attendance.xlsx", nil
-// }
+	return file, nil
+}

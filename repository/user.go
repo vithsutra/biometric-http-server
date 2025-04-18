@@ -275,7 +275,6 @@ func (repo *userRepo) ValidateOtp(r *http.Request) (string, error) {
 	return userId, nil
 
 }
-
 func (repo *userRepo) UpdateTime(r *http.Request) error {
 	var updateTimeRequest models.UpdateTimeRequest
 
@@ -284,8 +283,10 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	}
 
 	validate := validator.New()
-
-	validate.RegisterValidation("utcTimeFormat", utils.TimeValidator)
+	validate.RegisterValidation("rfc3339Nano", func(fl validator.FieldLevel) bool {
+		_, err := time.Parse(time.RFC3339Nano, fl.Field().String())
+		return err == nil
+	})
 
 	if err := validate.Struct(updateTimeRequest); err != nil {
 		return errors.New("invalid request format")
@@ -304,7 +305,6 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	}
 
 	query := database.NewQuery(repo.db)
-
 	if err := query.UpdateTime(
 		updateTimeRequest.UserId,
 		updateTimeRequest.MorningStartTime,
