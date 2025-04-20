@@ -78,8 +78,8 @@ func (r *ExcelRepository) DownloadExcel(req *models.ExcelDownloadRequest) (*exce
 			var status string
 			query := `
 			SELECT CASE
-				WHEN login IS NOT NULL THEN 'Present'
-				ELSE 'Absent'
+				WHEN login IS NOT NULL THEN 'P'
+				ELSE 'A'
 			END AS status
 			FROM attendance
 			WHERE student_id = (
@@ -91,13 +91,42 @@ func (r *ExcelRepository) DownloadExcel(req *models.ExcelDownloadRequest) (*exce
 			`
 			err := r.DB.QueryRow(query, stu.USN, req.UnitId, date).Scan(&status)
 			if err != nil {
-				status = "Absent"
+				status = "A"
 			}
 			cell, _ := excelize.CoordinatesToCellName(col, row)
 			file.SetCellValue(sheet, cell, status)
 		}
 		row++
 	}
+	// Style for heading row (black background, white bold text, centered, and more padding)
+	headerStyle, _ := file.NewStyle(&excelize.Style{
+		Font:      &excelize.Font{Bold: true, Color: "#FFFFFF"},
+		Fill:      excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{"#000000"}},
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+		Border: []excelize.Border{
+			{Type: "left", Color: "000000", Style: 1},
+			{Type: "right", Color: "000000", Style: 1},
+			{Type: "top", Color: "000000", Style: 1},
+			{Type: "bottom", Color: "000000", Style: 1},
+		},
+	})
+
+	// Style for centering content and wrapping text
+	centerStyle, _ := file.NewStyle(&excelize.Style{
+		Alignment: &excelize.Alignment{Horizontal: "center", Vertical: "center", WrapText: true},
+	})
+
+	// Apply header style
+	file.SetCellStyle(sheet, "A1", fmt.Sprintf("%s1", string(rune('A'+len(headers)-1))), headerStyle)
+
+	// Apply center style to content
+	lastCol, _ := excelize.ColumnNumberToName(len(headers))
+	file.SetCellStyle(sheet, "A2", fmt.Sprintf("%s%d", lastCol, row-1), centerStyle)
+
+	// Adjust column widths for better visibility
+	file.SetColWidth(sheet, "A", "A", 25)     // Name column
+	file.SetColWidth(sheet, "B", "B", 20)     // USN column
+	file.SetColWidth(sheet, "C", lastCol, 18) // Date columns
 
 	return file, nil
 }
