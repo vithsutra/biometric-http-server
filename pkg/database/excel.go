@@ -36,7 +36,6 @@ func (q *Query) DownloadExcel(req *models.ExcelDownloadRequest) (*excelize.File,
 	f := excelize.NewFile()
 	sheet := f.GetSheetName(0)
 
-	// Set headers
 	headers := []string{"Name", "USN", "Attendance Status"}
 	for i, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)

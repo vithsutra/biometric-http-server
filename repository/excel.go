@@ -147,7 +147,7 @@ func (r *ExcelRepository) DownloadExcel(req *models.ExcelDownloadRequest) (*exce
 			`
 			err := r.DB.QueryRow(query, stu.USN, req.UnitId, date).Scan(&status)
 			if err != nil {
-				status = "Absent"
+				status = "A"
 			}
 			cell, _ := excelize.CoordinatesToCellName(col, row)
 			file.SetCellValue(sheet, cell, status)
