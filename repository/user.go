@@ -193,9 +193,7 @@ func (repo *userRepo) UpdateNewPassword(r *http.Request) (bool, error) {
 }
 
 func (repo *userRepo) ForgotPassword(r *http.Request) (bool, string, error) {
-	//generating the random otp
-	//saving the otp for temporary in database
-	//sending the otp to the user registered email
+
 	var forgotPasswordRequest models.ForgotPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&forgotPasswordRequest); err != nil {
@@ -283,8 +281,8 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	}
 
 	validate := validator.New()
-	validate.RegisterValidation("rfc3339Nano", func(fl validator.FieldLevel) bool {
-		_, err := time.Parse(time.RFC3339Nano, fl.Field().String())
+	validate.RegisterValidation("hhmm", func(fl validator.FieldLevel) bool {
+		_, err := time.Parse("15:04", fl.Field().String())
 		return err == nil
 	})
 

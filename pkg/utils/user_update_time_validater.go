@@ -66,15 +66,16 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"time"
 )
 
 func UserUpdateTimeValidater(times ...string) error {
 	for _, t := range times {
-		if _, err := time.Parse(time.RFC3339Nano, t); err != nil {
-			log.Println("Invalid time format:", err)
-			return fmt.Errorf("invalid time format: %v", err)
+		if t == "" {
+			return fmt.Errorf("time value is empty")
+		}
+		if _, err := time.Parse("15:04", t); err != nil {
+			return fmt.Errorf("invalid time format for value '%s': %v", t, err)
 		}
 	}
 	return nil
