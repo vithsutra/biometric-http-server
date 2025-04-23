@@ -49,11 +49,12 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 
 	router.HandleFunc("/user/student/download/excel", excelHandler.DownloadExcel).Methods("POST")
 
-	tempDir := "/Users/bunny/Desktop/Vithsutra"
-
+	tempDir := "/tmp"
 	if os.Getenv("OS") == "Windows_NT" {
 		tempDir = os.Getenv("TEMP")
 	}
+
 	router.PathPrefix("/files/").Handler(http.StripPrefix("/files/", http.FileServer(http.Dir(tempDir)))).Methods("GET")
+
 	return router
 }

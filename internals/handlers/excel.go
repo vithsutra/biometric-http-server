@@ -76,28 +76,24 @@ func (c *ExcelController) DownloadExcel(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Failed to generate Excel file: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	tempDir := "/tmp"
+	if os.Getenv("OS") == "Windows_NT" {
+		tempDir = os.Getenv("TEMP")
+	}
 
-	// Save the file locally (for debugging or later use)
-	saveDir := "/Users/bunny/Desktop/Vithsutra"
-	if err := os.MkdirAll(saveDir, os.ModePerm); err != nil {
-		http.Error(w, "Failed to create save directory: "+err.Error(), http.StatusInternalServerError)
+	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
+		http.Error(w, fmt.Sprintf("Error creating temp directory: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	fileName := "student_" + time.Now().Format("2006_01_02_15_04_05") + ".xlsx"
-	fullPath := fmt.Sprintf("%s/%s", saveDir, fileName)
+	filePath := fmt.Sprintf("%s/student_report.xlsx", tempDir)
 
-	if err := file.SaveAs(fullPath); err != nil {
-		http.Error(w, "Failed to save Excel file: "+err.Error(), http.StatusInternalServerError)
+	if err := file.SaveAs(filePath); err != nil {
+		http.Error(w, fmt.Sprintf("Error saving file: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// Respond with success message
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message":  "Excel downloaded and saved successfully",
-		"filename": fileName,
-		"path":     fullPath,
-	})
+	w.Header().Set("Content-Disposition", "attachment; filename=MaterialStock.xlsx")
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	http.ServeFile(w, r, filePath)
 }
