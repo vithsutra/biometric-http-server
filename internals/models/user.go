@@ -29,12 +29,12 @@ type UserLoginRequest struct {
 
 type UpdateTimeRequest struct {
 	UserId             string `json:"user_id" validate:"required"`
-	MorningStartTime   string `json:"morning_start_time" validate:"required,utcTimeFormat"`
-	MorningEndTime     string `json:"morning_end_time" validate:"required,utcTimeFormat"`
-	AfterNoonStartTime string `json:"afternoon_start_time" validate:"required,utcTimeFormat"`
-	AfterNoonEndTime   string `json:"afternoon_end_time" validate:"required,utcTimeFormat"`
-	EveningStartTime   string `json:"evening_start_time" validate:"required,utcTimeFormat"`
-	EveningEndTime     string `json:"evening_end_time" validate:"required,utcTimeFormat"`
+	MorningStartTime   string `json:"morning_start_time" validate:"required,hhmm"`
+	MorningEndTime     string `json:"morning_end_time" validate:"required,hhmm"`
+	AfterNoonStartTime string `json:"afternoon_start_time" validate:"required,hhmm"`
+	AfterNoonEndTime   string `json:"afternoon_end_time" validate:"required,hhmm"`
+	EveningStartTime   string `json:"evening_start_time" validate:"required,hhmm"`
+	EveningEndTime     string `json:"evening_end_time" validate:"required,hhmm"`
 }
 
 type User struct {

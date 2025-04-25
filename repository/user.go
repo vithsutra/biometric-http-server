@@ -193,9 +193,7 @@ func (repo *userRepo) UpdateNewPassword(r *http.Request) (bool, error) {
 }
 
 func (repo *userRepo) ForgotPassword(r *http.Request) (bool, string, error) {
-	//generating the random otp
-	//saving the otp for temporary in database
-	//sending the otp to the user registered email
+
 	var forgotPasswordRequest models.ForgotPasswordRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&forgotPasswordRequest); err != nil {
@@ -275,7 +273,6 @@ func (repo *userRepo) ValidateOtp(r *http.Request) (string, error) {
 	return userId, nil
 
 }
-
 func (repo *userRepo) UpdateTime(r *http.Request) error {
 	var updateTimeRequest models.UpdateTimeRequest
 
@@ -284,8 +281,10 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	}
 
 	validate := validator.New()
-
-	validate.RegisterValidation("utcTimeFormat", utils.TimeValidator)
+	validate.RegisterValidation("hhmm", func(fl validator.FieldLevel) bool {
+		_, err := time.Parse("15:04", fl.Field().String())
+		return err == nil
+	})
 
 	if err := validate.Struct(updateTimeRequest); err != nil {
 		return errors.New("invalid request format")
@@ -304,7 +303,6 @@ func (repo *userRepo) UpdateTime(r *http.Request) error {
 	}
 
 	query := database.NewQuery(repo.db)
-
 	if err := query.UpdateTime(
 		updateTimeRequest.UserId,
 		updateTimeRequest.MorningStartTime,

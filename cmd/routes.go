@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"net/http"
+	"os"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/handlers"
 	"github.com/VsenseTechnologies/biometric_http_server/repository"
@@ -16,6 +17,7 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	userHandler := handlers.NewUserHandler(repository.NewUserRepo(db))
 	biometricHandler := handlers.NewBiometricHandler(repository.NewBiometricRepo(db))
 	studentHandler := handlers.NewStudentHandler(repository.NewStudentRepo(db))
+	excelHandler := handlers.NewExcelController(repository.NewExcelRepository(db))
 
 	router.HandleFunc("/root/create/admin", adminHandler.CreateAdminHandler).Methods("POST")
 
@@ -44,7 +46,15 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	router.HandleFunc("/user/delete/student", studentHandler.DeleteStudentHandler).Methods("POST")
 	router.HandleFunc("/user/student/logs/{student_id}", studentHandler.GetStudentLogsHandler).Methods("GET")
 	router.HandleFunc("/user/student/download/pdf", studentHandler.DownloadPdfHandler).Methods("POST")
-	router.HandleFunc("/user/student/download/excel", studentHandler.DownloadExcelHandler).Methods("POST")
+
+	router.HandleFunc("/user/student/download/excel", excelHandler.DownloadExcel).Methods("POST")
+
+	tempDir := "/tmp"
+	if os.Getenv("OS") == "Windows_NT" {
+		tempDir = os.Getenv("TEMP")
+	}
+
+	router.PathPrefix("/files/").Handler(http.StripPrefix("/files/", http.FileServer(http.Dir(tempDir)))).Methods("GET")
 
 	return router
 }

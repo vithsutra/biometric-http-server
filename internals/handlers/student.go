@@ -123,23 +123,3 @@ func (h *studentHandler) DownloadPdfHandler(w http.ResponseWriter, r *http.Reque
 		log.Println(err)
 	}
 }
-
-func (h *studentHandler) DownloadExcelHandler(w http.ResponseWriter, r *http.Request) {
-	file, err := h.repo.DownloadExcel(r)
-
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Disposition", "attachment; filename=\"attendance-report.xlsx\"")
-	w.WriteHeader(http.StatusOK)
-
-	if _, err := file.WriteTo(w); err != nil {
-		log.Println(err)
-	}
-	return
-}
