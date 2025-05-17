@@ -6,12 +6,15 @@ import (
 	"os"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/handlers"
+	middlewares "github.com/VsenseTechnologies/biometric_http_server/internals/middleware"
 	"github.com/VsenseTechnologies/biometric_http_server/repository"
 	"github.com/gorilla/mux"
 )
 
 func InitilizeHttpRouters(db *sql.DB) http.Handler {
+
 	router := mux.NewRouter()
+	router.Use(middlewares.CorsMiddleware)
 
 	adminHandler := handlers.NewAdminHandler(repository.NewAdminRepo(db))
 	userHandler := handlers.NewUserHandler(repository.NewUserRepo(db))
