@@ -59,7 +59,7 @@ func (q *Query) InitilizeDatabase() error {
 			login VARCHAR NOT NULL, 
 			logout VARCHAR NOT NULL, 
 			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE, 
-			FOREIGN KEY (student_id) REFERENCES fingerprintdata(student_id) ON DELETE CASCADE
+			FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS times (
 			user_id VARCHAR NOT NULL, 
