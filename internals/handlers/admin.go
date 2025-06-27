@@ -41,7 +41,7 @@ func (h *adminHandler) CreateAdminHandler(w http.ResponseWriter, r *http.Request
 func (h *adminHandler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	isPasswordCorrect, err := h.adminInterface.AdminLogin(r)
+	isPasswordCorrect, token, err := h.adminInterface.AdminLogin(r)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -56,5 +56,5 @@ func (h *adminHandler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "login successfull"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "login successfull", "token": token})
 }

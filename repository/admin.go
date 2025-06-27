@@ -73,32 +73,43 @@ func (repo *adminRepo) CreateAdmin(r *http.Request) (bool, error) {
 	return true, nil
 }
 
-func (repo *adminRepo) AdminLogin(r *http.Request) (bool, error) {
+func (repo *adminRepo) AdminLogin(r *http.Request) (bool, string, error) {
 	var adminLoginRequest models.AdminLoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&adminLoginRequest); err != nil {
-		return false, errors.New("invalid json format")
+		return false, "", errors.New("invalid json format")
 	}
 
 	validate := validator.New()
 
 	if err := validate.Struct(adminLoginRequest); err != nil {
-		return false, errors.New("invalid request format")
+		return false, "", errors.New("invalid request format")
 	}
 
 	query := database.NewQuery(repo.db)
 
 	password, err := query.GetAdminPassword(adminLoginRequest.UserName)
-
 	if err != nil {
 		log.Println(err)
-		return false, err
+		return false, "", err
 	}
 
 	if err := utils.CheckPassword(password, adminLoginRequest.Password); err != nil {
-		return false, nil
+		return false, "", nil
 	}
 
-	return true, nil
+	AdminDetails, err := query.GetAdminDetails(adminLoginRequest.UserName)
+	if err != nil {
+		log.Println(err)
+		return false, "", err
+	}
+
+	token, err := utils.GenerateToken(AdminDetails.UserId, AdminDetails.UserName)
+	if err != nil {
+		log.Println(err)
+		return false, "", err
+	}
+
+	return true, token, nil
 
 }

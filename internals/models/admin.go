@@ -21,5 +21,10 @@ type AdminLoginRequest struct {
 
 type AdminInterface interface {
 	CreateAdmin(r *http.Request) (bool, error)
-	AdminLogin(r *http.Request) (bool, error)
+	AdminLogin(r *http.Request) (bool, string, error)
+}
+
+type AdminDetailsModel struct {
+	UserId   string
+	UserName string
 }

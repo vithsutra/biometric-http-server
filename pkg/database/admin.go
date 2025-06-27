@@ -15,3 +15,11 @@ func (q *Query) GetAdminPassword(userName string) (string, error) {
 	err := q.db.QueryRow(query, userName).Scan(&adminPassword)
 	return adminPassword, err
 }
+
+func (q *Query) GetAdminDetails(userName string) (models.AdminDetailsModel, error) {
+	query := `SELECT user_id,user_name FROM admin WHERE user_name=$1`
+
+	var adminDetails models.AdminDetailsModel
+	err := q.db.QueryRow(query, userName).Scan(&adminDetails.UserId, &adminDetails.UserName)
+	return adminDetails, err
+}
