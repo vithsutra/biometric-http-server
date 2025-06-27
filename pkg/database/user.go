@@ -1,8 +1,6 @@
 package database
 
 import (
-	"fmt"
-
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 )
 
@@ -41,11 +39,8 @@ func (q *Query) UserLogin(userName string) (string, string, error) {
 	var password string
 	var userId string
 
-	if err := q.db.QueryRow(query, userName).Scan(&userId, &password); err != nil {
-		return "", "", err
-	}
-
-	return userId, password, nil
+	err := q.db.QueryRow(query, userName).Scan(&userId, &password)
+	return userId, password, err
 }
 
 func (q *Query) UpdateTime(
@@ -78,11 +73,8 @@ func (q *Query) GiveUserAccess(userId string) (string, string, string, error) {
 	var password string
 	var email string
 
-	if err := q.db.QueryRow(query, userId).Scan(&userName, &password, &email); err != nil {
-		return "", "", "", err
-	}
-
-	return userName, password, email, nil
+	err := q.db.QueryRow(query, userId).Scan(&userName, &password, &email)
+	return userName, password, email, err
 
 }
 
@@ -109,6 +101,10 @@ func (q *Query) GetAllUsers() ([]*models.User, error) {
 		users = append(users, &user)
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return users, nil
 
 }
@@ -118,13 +114,11 @@ func (q *Query) CheckUserIdExists(userId string) (bool, error) {
 				SELECT 1 FROM users WHERE user_id=$1
 			 )`
 
-	var isUserIdExists bool
+	isUserIdExists := false
 
-	if err := q.db.QueryRow(query, userId).Scan(&isUserIdExists); err != nil {
-		return false, err
-	}
+	err := q.db.QueryRow(query, userId).Scan(&isUserIdExists)
 
-	return isUserIdExists, nil
+	return isUserIdExists, err
 }
 
 func (q *Query) UpdateNewPassword(userId string, password string) error {
@@ -139,10 +133,8 @@ func (q *Query) CheckUserEmailExists(email string) (bool, error) {
 			)`
 	var isEmailExists bool
 
-	if err := q.db.QueryRow(query, email).Scan(&isEmailExists); err != nil {
-		return false, err
-	}
-	return isEmailExists, nil
+	err := q.db.QueryRow(query, email).Scan(&isEmailExists)
+	return isEmailExists, err
 }
 
 func (q *Query) StoreOtp(email string, otp string) error {
@@ -150,7 +142,6 @@ func (q *Query) StoreOtp(email string, otp string) error {
 			  SET otp = EXCLUDED.otp`
 
 	_, err := q.db.Exec(query, email, otp)
-
 	return err
 }
 
@@ -222,6 +213,10 @@ func (q *Query) GetBiometricDevicesForRegisterForm(userId string) ([]string, err
 		}
 		units = append(units, unit)
 	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	return units, nil
 }
 
@@ -229,9 +224,9 @@ func (q *Query) GetStudentUnitIdsForRegisterForm(unitId string) ([]string, error
 
 	var studentUnitIds []string
 
-	query := fmt.Sprintf(`SELECT student_unit_id FROM %s`, unitId)
+	query := `SELECT student_unit_id FROM student WHERE unit_id = $1`
 
-	rows, err := q.db.Query(query)
+	rows, err := q.db.Query(query, unitId)
 
 	if err != nil {
 		return nil, err
@@ -244,8 +239,11 @@ func (q *Query) GetStudentUnitIdsForRegisterForm(unitId string) ([]string, error
 		if err := rows.Scan(&studentUnitId); err != nil {
 			return nil, err
 		}
-
 		studentUnitIds = append(studentUnitIds, studentUnitId)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return studentUnitIds, nil

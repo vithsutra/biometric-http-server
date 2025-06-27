@@ -110,26 +110,3 @@ func (repo *biometricRepo) DeleteBiometricDevice(r *http.Request) error {
 	}
 	return nil
 }
-
-func (repo *biometricRepo) ClearBiometricDeviceData(r *http.Request) error {
-	var clearBiometricRequest models.ClearBiometricDataRequest
-
-	if err := json.NewDecoder(r.Body).Decode(&clearBiometricRequest); err != nil {
-		return errors.New("invalid json format")
-	}
-
-	validate := validator.New()
-
-	if err := validate.Struct(clearBiometricRequest); err != nil {
-		return errors.New("invalid request format")
-	}
-
-	query := database.NewQuery(repo.db)
-
-	if err := query.ClearBiometricDeviceData(clearBiometricRequest.UserId, clearBiometricRequest.UnitId); err != nil {
-		log.Println(err)
-		return err
-	}
-
-	return nil
-}

@@ -18,64 +18,80 @@ func NewQuery(db *sql.DB) *Query {
 func (q *Query) InitilizeDatabase() error {
 	queries := []string{
 		`CREATE TABLE IF NOT EXISTS admin (
-			user_id VARCHAR(255) PRIMARY KEY, 
-			user_name VARCHAR(255) NOT NULL UNIQUE, 
-			password VARCHAR(255) NOT NULL
+			user_id VARCHAR PRIMARY KEY, 
+			user_name VARCHAR NOT NULL UNIQUE, 
+			password VARCHAR NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS users (
-			user_id VARCHAR(255) PRIMARY KEY, 
-			user_name VARCHAR(255) NOT NULL UNIQUE, 
-			email VARCHAR(255) NOT NULL UNIQUE,
-			password VARCHAR(255) NOT NULL
+			user_id VARCHAR PRIMARY KEY, 
+			user_name VARCHAR NOT NULL UNIQUE, 
+			email VARCHAR NOT NULL UNIQUE,
+			password VARCHAR NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS biometric (
-			user_id VARCHAR(100), 
-			unit_id VARCHAR(50) PRIMARY KEY, 
+			user_id VARCHAR NOT NULL, 
+			unit_id VARCHAR PRIMARY KEY, 
 			online BOOLEAN NOT NULL, 
-			label VARCHAR(100) NOT NULL,
+			label VARCHAR NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 		)`,
+		`CREATE TABLE IF NOT EXISTS student(
+			student_id VARCHAR PRIMARY KEY,
+			unit_id VARCHAR NOT NULL,
+			student_name VARCHAR NOT NULL,
+			student_usn VARCHAR NOT NULL,
+			department VARCHAR NOT NULL,
+			FOREIGN KEY (unit_id) references biometric(unit_id) ON DELETE CASCADE
+		)`,
 		`CREATE TABLE IF NOT EXISTS fingerprintdata (
-			student_id VARCHAR(100) PRIMARY KEY, 
-			student_unit_id VARCHAR(100), 
-			unit_id VARCHAR(50), 
-			fingerprint VARCHAR(1000), 
-			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE
+			student_id VARCHAR NOT NULL, 
+			student_unit_id VARCHAR NOT NULL, 
+			unit_id VARCHAR NOT NULL, 
+			fingerprint VARCHAR NOT NULL, 
+			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE,
+			PRIMARY KEY (student_id, student_unit_id)
 		)`,
 		`CREATE TABLE IF NOT EXISTS attendance (
-			student_id VARCHAR(100), 
-			student_unit_id VARCHAR(100), 
-			unit_id VARCHAR(50), 
-			date VARCHAR(20), 
-			login VARCHAR(20), 
-			logout VARCHAR(20), 
+			student_id VARCHAR NOT NULL, 
+			student_unit_id VARCHAR NOT NULL, 
+			unit_id VARCHAR NOT NULL, 
+			date VARCHAR NOT NULL, 
+			login VARCHAR NOT NULL, 
+			logout VARCHAR NOT NULL, 
 			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE, 
 			FOREIGN KEY (student_id) REFERENCES fingerprintdata(student_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS times (
-			user_id VARCHAR(255), 
-			morning_start VARCHAR(255), 
-			morning_end VARCHAR(255), 
-			afternoon_start VARCHAR(255), 
-			afternoon_end VARCHAR(255), 
-			evening_start VARCHAR(255), 
-			evening_end VARCHAR(255), 
+			user_id VARCHAR NOT NULL, 
+			morning_start VARCHAR NOT NULL, 
+			morning_end VARCHAR NOT NULL, 
+			afternoon_start VARCHAR NOT NULL, 
+			afternoon_end VARCHAR NOT NULL, 
+			evening_start VARCHAR NOT NULL, 
+			evening_end VARCHAR NOT NULL, 
 			FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS inserts(
-			unit_id VARCHAR(200),
-			student_unit_id VARCHAR(200),
-			fingerprint_data VARCHAR(1000)
+			unit_id VARCHAR NOT NULL,
+			student_unit_id VARCHAR NOT NULL,
+			fingerprint_data VARCHAR NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS deletes(
-			unit_id VARCHAR(200),
-			student_unit_id VARCHAR(200)
+			unit_id VARCHAR NOT NULL,
+			student_unit_id VARCHAR NOT NULL
 		)`,
 		`CREATE TABLE IF NOT EXISTS otps (
 			id SERIAL PRIMARY KEY,
 			email VARCHAR(255) UNIQUE NOT NULL,
 			otp VARCHAR(10) NOT NULL
  		)`,
+		`CREATE TABLE IF NOT EXISTS student_unit_numbers (
+			unit_id VARCHAR NOT NULL,
+			student_unit_id VARCHAR NOT NULL,
+			availability BOOL DEFAULT TRUE,
+			PRIMARY KEY (unit_id, student_unit_id), 
+			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE
+		)`,
 	}
 
 	tx, err := q.db.Begin()

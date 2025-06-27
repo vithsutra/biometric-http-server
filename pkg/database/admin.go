@@ -12,9 +12,6 @@ func (q *Query) GetAdminPassword(userName string) (string, error) {
 	query := `SELECT password FROM admin WHERE user_name=$1`
 
 	var adminPassword string
-	if err := q.db.QueryRow(query, userName).Scan(&adminPassword); err != nil {
-		return "", err
-	}
-
-	return adminPassword, nil
+	err := q.db.QueryRow(query, userName).Scan(&adminPassword)
+	return adminPassword, err
 }

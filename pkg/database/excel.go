@@ -56,5 +56,9 @@ func (q *Query) DownloadExcel(req *models.ExcelDownloadRequest) (*excelize.File,
 		rowNum++
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return f, nil
 }

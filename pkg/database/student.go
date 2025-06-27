@@ -1,74 +1,73 @@
 package database
 
 import (
-	"fmt"
-	"regexp"
+
+	// "regexp"
 	"sync"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
 	"github.com/VsenseTechnologies/biometric_http_server/pkg/utils"
+	"github.com/lib/pq"
 )
 
-func isValidIdentifier(id string) bool {
-	re := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
-	return re.MatchString(id)
-}
+//	func isValidIdentifier(id string) bool {
+//		re := regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
+//		return re.MatchString(id)
+//	}
 func (q *Query) CheckStudentUnitIdExists(unitId string, studentUnitId string) (bool, error) {
 	query := `SELECT EXISTS ( SELECT 1 FROM  ` + unitId + ` WHERE student_unit_id = $1)`
 
 	var isStudentUnitIdExists bool
-
-	if err := q.db.QueryRow(query, studentUnitId).Scan(&isStudentUnitIdExists); err != nil {
-		return false, err
-	}
-
-	return isStudentUnitIdExists, nil
+	err := q.db.QueryRow(query, studentUnitId).Scan(&isStudentUnitIdExists)
+	return isStudentUnitIdExists, err
 }
 
-func (q *Query) CreateNewStudent(student *models.Student, unitId string, fingerPrintData string) error {
-	query1 := `INSERT INTO fingerprintdata (student_id,student_unit_id,unit_id,fingerprint) VALUES ($1,$2,$3,$4)`
-	query2 := fmt.Sprintf("INSERT INTO %s (student_id,student_unit_id,student_name,student_usn,department) VALUES ($1,$2,$3,$4,$5)", unitId)
+func (q *Query) CreateNewStudent(student *models.Student, unitId string, fingerPrintData []string) error {
+	query1 := "INSERT INTO student (student_id,unit_id,student_name,student_usn,department) VALUES ($1,$2,$3,$4,$5)"
+	query2 := `INSERT INTO fingerprintdata (student_id,student_unit_id,unit_id,fingerprint) VALUES ($1,$2,$3,$4)`
 	query3 := `INSERT INTO inserts (unit_id,student_unit_id,fingerprint_data) VALUES ($1,$2,$3)`
 
 	tx, err := q.db.Begin()
-
 	if err != nil {
 		return err
 	}
 
-	if _, err := tx.Exec(query1, student.StudentId, student.StudentUnitId, unitId, fingerPrintData); err != nil {
+	if _, err := tx.Exec(query1, student.StudentId, unitId, student.StudentName, student.StudentUsn, student.Department); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	if _, err := tx.Exec(query2, student.StudentId, student.StudentUnitId, student.StudentName, student.StudentUsn, student.Department); err != nil {
+	for i := 0; i < 6; i++ {
+		if _, err := tx.Exec(query2, student.StudentId, student.StudentUnitId[i], unitId, fingerPrintData[i]); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	for i := 0; i < 6; i++ {
+		if _, err := tx.Exec(query3, unitId, student.StudentUnitId[i], fingerPrintData[i]); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := q.UpdateAvailableStudentUnitIDs(unitId, student.StudentUnitId, false); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	if _, err := tx.Exec(query3, unitId, student.StudentUnitId, fingerPrintData); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		tx.Rollback()
-		return err
-	}
-
+	tx.Commit()
 	return nil
 }
 
 func (q *Query) UpdateStudent(unitId string, studentId string, studentName string, studentUsn string, department string) error {
-	query := fmt.Sprintf(`UPDATE %s SET student_name=$2,student_usn=$3,department=$4 WHERE student_id=$1`, unitId)
-	if _, err := q.db.Exec(query, studentId, studentName, studentUsn, department); err != nil {
-		return err
-	}
-	return nil
+	query := `UPDATE student SET student_name=$2,student_usn=$3,department=$4 WHERE student_id=$1`
+	_, err := q.db.Exec(query, studentId, studentName, studentUsn, department)
+	return err
 }
 
-func (q *Query) DeleteStudent(unitId string, studentId string, studentUnitId string) error {
-	query1 := `DELETE FROM fingerprintdata WHERE student_id=$1`
+func (q *Query) DeleteStudent(unitId string, studentId string) error {
+	query1 := `DELETE FROM fingerprintdata WHERE student_id=$1 RETRUNING student_unit_id`
 	query2 := `INSERT INTO deletes (unit_id,student_unit_id) VALUES ($1,$2)`
 	query3 := `DELETE FROM inserts WHERE unit_id=$1 AND student_unit_id=$2`
 
@@ -78,37 +77,92 @@ func (q *Query) DeleteStudent(unitId string, studentId string, studentUnitId str
 		return err
 	}
 
-	if _, err := tx.Exec(query1, studentId); err != nil {
+	rows, err := tx.Query(query1, studentId)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer rows.Close()
+
+	var student_unit_ids []string
+	var student_unit_id string
+
+	for rows.Next() {
+		if err := rows.Scan(&student_unit_id); err != nil {
+			tx.Rollback()
+			return err
+		}
+		student_unit_ids = append(student_unit_ids, student_unit_id)
+	}
+
+	for i := 0; i < 6; i++ {
+		if _, err := tx.Exec(query2, unitId, student_unit_ids[i]); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	for i := 0; i < 6; i++ {
+		if _, err := tx.Exec(query3, unitId, student_unit_ids[i]); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	if err := q.UpdateAvailableStudentUnitIDs(unitId, student_unit_ids, true); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	if _, err := tx.Exec(query2, unitId, studentUnitId); err != nil {
+	if rows.Err() != nil {
 		tx.Rollback()
-		return err
+		return rows.Err()
 	}
 
-	if _, err := tx.Exec(query3, unitId, studentUnitId); err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
+	tx.Commit()
 	return nil
 }
 
-func (q *Query) GetStudentDetails(unitId string) ([]*models.Student, error) {
-	query := fmt.Sprintf(`SELECT student_id,student_unit_id,student_name,student_usn,department FROM %s`, unitId)
+func (q *Query) GetStudentDetails(unitId string, limit, offset int) ([]*models.Student, int, error) {
+	query1 := `SELECT 
+				s.student_id,
+				s.student_name,
+				s.student_usn,
+				s.department,
+				ARRAY_AGG(fd.student_unit_id ORDER BY fd.student_unit_id) AS student_unit_id
+			FROM 
+				student s
+			JOIN 
+				fingerprintdata fd ON s.student_id = fd.student_id
+			WHERE
+				s.unit_id = $1
+			GROUP BY 
+				s.student_id, s.student_name, s.student_usn, s.department
+			HAVING 
+				COUNT(fd.student_unit_id) = 6
+			LIMIT $2
+			OFFSET $3;
+			`
 
+	query2 := `SELECT 
+					COUNT(*) AS total_students
+				FROM (
+					SELECT s.student_id
+					FROM student s
+					JOIN fingerprintdata fd ON s.student_id = fd.student_id
+					WHERE s.unit_id = $1
+					GROUP BY s.student_id
+					HAVING COUNT(fd.student_unit_id) = 6
+				) AS sub;`
 	var students []*models.Student
 
-	rows, err := q.db.Query(query)
-
+	tx, err := q.db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, -1, err
+	}
+	rows, err := tx.Query(query1, unitId, limit, offset)
+	if err != nil {
+		tx.Rollback()
+		return nil, -1, err
 	}
 
 	defer rows.Close()
@@ -116,14 +170,27 @@ func (q *Query) GetStudentDetails(unitId string) ([]*models.Student, error) {
 	for rows.Next() {
 		var student models.Student
 
-		if err := rows.Scan(&student.StudentId, &student.StudentUnitId, &student.StudentName, &student.StudentUsn, &student.Department); err != nil {
-			return nil, err
+		if err := rows.Scan(&student.StudentId, &student.StudentName, &student.StudentUsn, &student.Department, pq.Array(&student.StudentUnitId)); err != nil {
+			tx.Rollback()
+			return nil, -1, err
 		}
 
 		students = append(students, &student)
 	}
 
-	return students, nil
+	if rows.Err() != nil {
+		tx.Rollback()
+		return nil, -1, rows.Err()
+	}
+
+	var totalStudents int
+
+	if err := tx.QueryRow(query2, unitId).Scan(&totalStudents); err != nil {
+		tx.Rollback()
+		return nil, -1, err
+	}
+
+	return students, totalStudents, nil
 }
 
 func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog, error) {
@@ -173,19 +240,19 @@ func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog
 		studentLogs = append(studentLogs, &attendanceLog)
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return studentLogs, nil
 }
 
 func (q *Query) GetStudentsCountFromUnit(unitId string) (int32, error) {
-	query := `SELECT COUNT(*) FROM ` + unitId
+	query := `SELECT COUNT(*) FROM student WHERE unit_id = $1`
 
 	var studentCount int32
-
-	if err := q.db.QueryRow(query).Scan(&studentCount); err != nil {
-		return -1, err
-	}
-
-	return studentCount, nil
+	err := q.db.QueryRow(query, unitId).Scan(&studentCount)
+	return studentCount, err
 
 }
 
@@ -206,9 +273,9 @@ func (q *Query) GetUserStandardTime(userId string) (*models.UserTime, error) {
 }
 
 func (q *Query) GetStudentsForPdf(unitId string, studentsCount int32) (map[string]*models.PdfFormat, error) {
-	query := `SELECT student_id, student_name, student_usn FROM ` + unitId + ` ORDER BY student_usn`
+	query := `SELECT student_id, student_name, student_usn FROM student WHERE unit_id = $1 ORDER BY student_usn`
 
-	rows, err := q.db.Query(query)
+	rows, err := q.db.Query(query, unitId)
 
 	if err != nil {
 		return nil, err
@@ -227,6 +294,10 @@ func (q *Query) GetStudentsForPdf(unitId string, studentsCount int32) (map[strin
 		pdfFormats[pdfFormat.StudentId] = &pdfFormat
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return pdfFormats, nil
 }
 
@@ -234,7 +305,7 @@ func (q *Query) GetStudentsAttendanceLogForPdf(studentsCount int32, userTime *mo
 
 	var wg sync.WaitGroup
 
-	for studentId, _ := range pdfFormats {
+	for studentId := range pdfFormats {
 
 		wg.Add(1)
 

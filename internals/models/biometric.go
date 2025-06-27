@@ -30,5 +30,4 @@ type BiometricInterface interface {
 	GetBiometricDevices(r *http.Request) ([]*Biometric, error)
 	UpdateBiometricLabel(r *http.Request) error
 	DeleteBiometricDevice(r *http.Request) error
-	ClearBiometricDeviceData(r *http.Request) error
 }

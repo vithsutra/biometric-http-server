@@ -417,7 +417,7 @@ func generateStudentReport(pdf *gopdf.GoPdf, date string, machineId string, slot
 	startY := pdf.GetY() + 0.4
 
 	var index = 0
-	for studentIdKey, _ := range pdfFormats {
+	for studentIdKey := range pdfFormats {
 
 		if pdfFormats[studentIdKey].Login != "pending" {
 			t, err := ConvertTo12HourFormat(pdfFormats[studentIdKey].Login)

@@ -78,15 +78,3 @@ func (h *biometricHandler) DeleteBiometricDeviceHandler(w http.ResponseWriter, r
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device deleted successfully"})
 }
-
-func (h *biometricHandler) ClearBiometricDeviceDataHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := h.repo.ClearBiometricDeviceData(r); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "biometric device data cleared successfully"})
-}

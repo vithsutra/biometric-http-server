@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -41,26 +43,37 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 
 	query := database.NewQuery(repo.db)
 
-	isStudentUnitIdExists, err := query.CheckStudentUnitIdExists(createStudentRequest.UnitId, createStudentRequest.StudentUnitId)
-
+	availableStudentIDs, UnitFound, err := query.GetAvailableStudentUnitIDs(createStudentRequest.UnitId)
 	if err != nil {
-		log.Println(err)
-		return errors.New("internal server error")
+		return err
+	} else if !UnitFound {
+		return fmt.Errorf("biometric device not found")
 	}
 
-	if isStudentUnitIdExists {
-		return errors.New("student unit id already exists")
-	}
+	// isStudentUnitIdExists, err := query.CheckStudentUnitIdExists(createStudentRequest.UnitId, createStudentRequest.StudentUnitId)
+
+	// if err != nil {
+	// 	log.Println(err)
+	// 	return errors.New("internal server error")
+	// }
+
+	// if isStudentUnitIdExists {
+	// 	return errors.New("student unit id already exists")
+	// }
 
 	var student models.Student
 
 	unitId := strings.ToLower(createStudentRequest.UnitId)
 
 	student.StudentId = uuid.NewString()
-	student.StudentUnitId = createStudentRequest.StudentUnitId
+	// student.StudentUnitId = createStudentRequest.StudentUnitId
 	student.StudentName = createStudentRequest.StudentName
 	student.StudentUsn = createStudentRequest.StudentUsn
 	student.Department = createStudentRequest.Department
+
+	for i := 0; i < 6; i++ {
+		student.StudentUnitId[i] = availableStudentIDs[i]
+	}
 
 	if err := query.CreateNewStudent(&student, unitId, createStudentRequest.FingerprintData); err != nil {
 		log.Println(err)
@@ -111,7 +124,8 @@ func (repo *studentRepo) DeleteStudent(r *http.Request) error {
 
 	unitId := strings.ToLower(deleteStudentRequest.UnitId)
 
-	if err := query.DeleteStudent(unitId, deleteStudentRequest.StudentId, deleteStudentRequest.StudentUnitId); err != nil {
+	err := query.DeleteStudent(unitId, deleteStudentRequest.StudentId)
+	if err != nil {
 		log.Println(err)
 		return err
 	}
@@ -119,21 +133,43 @@ func (repo *studentRepo) DeleteStudent(r *http.Request) error {
 	return nil
 }
 
-func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, error) {
+func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, int, int, int, error) {
 	vars := mux.Vars(r)
 
 	unitId := vars["unit_id"]
 
+	limit := r.URL.Query().Get("limit")
+	if limit == "" {
+		limit = "10"
+	}
+
+	page := r.URL.Query().Get("page")
+	if page == "" {
+		page = "1"
+	}
+
+	limit_int, err := strconv.Atoi(limit)
+	if err != nil {
+		return nil, -1, -1, -1, errors.New("invalid limit")
+	}
+
+	page_int, err := strconv.Atoi(page)
+	if err != nil {
+		return nil, -1, -1, -1, errors.New("invalid page")
+	}
+
 	query := database.NewQuery(repo.db)
 
-	students, err := query.GetStudentDetails(unitId)
+	offset := (page_int - 1) * limit_int
+
+	students, total_students, err := query.GetStudentDetails(unitId, limit_int, offset)
 
 	if err != nil {
 		log.Println(err)
-		return nil, errors.New("internal server error")
+		return nil, -1, -1, -1, errors.New("internal server error")
 	}
 
-	return students, nil
+	return students, total_students, limit_int, page_int, nil
 }
 
 func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAttendanceLog, error) {

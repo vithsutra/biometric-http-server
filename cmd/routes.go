@@ -41,7 +41,6 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	router.HandleFunc("/user/delete/biometric_device/{unit_id}", biometricHandler.DeleteBiometricDeviceHandler).Methods("GET")
 	router.HandleFunc("/user/update/biometric_device/label", biometricHandler.UpdateBiometricLabelHandler).Methods("POST")
 	router.HandleFunc("/user/get/biometric_device/{user_id}", biometricHandler.GetBiometricDevicesHandler).Methods("GET")
-	router.HandleFunc("/user/clear/biometric_device/data", biometricHandler.ClearBiometricDeviceDataHandler).Methods("POST")
 
 	router.HandleFunc("/user/create/student", studentHandler.CreateNewStudentHandler).Methods("POST")
 	router.HandleFunc("/user/update/student", studentHandler.UpdateStudentDetailsHandler).Methods("POST")
