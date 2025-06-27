@@ -148,10 +148,8 @@ func (q *Query) GetStudentDetails(unitId string, limit, offset int) ([]*models.S
 				FROM (
 					SELECT s.student_id
 					FROM student s
-					JOIN fingerprintdata fd ON s.student_id = fd.student_id
 					WHERE s.unit_id = $1
 					GROUP BY s.student_id
-					HAVING COUNT(fd.student_unit_id) = 6
 				) AS sub;`
 	var students []*models.Student
 
