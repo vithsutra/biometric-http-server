@@ -190,6 +190,7 @@ func (q *Query) GetStudentDetails(unitId string, limit, offset int) ([]*models.S
 		return nil, -1, err
 	}
 
+	tx.Commit()
 	return students, totalStudents, nil
 }
 

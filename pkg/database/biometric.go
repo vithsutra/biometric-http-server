@@ -29,6 +29,7 @@ func (q *Query) CreateBiometricDevice(biometric *models.Biometric) error {
 		}
 	}
 
+	tx.Commit()
 	return err
 }
 
@@ -84,6 +85,7 @@ func (q *Query) DeleteBiometricDevice(unitId string) error {
 		tx.Rollback()
 	}
 
+	tx.Commit()
 	return err
 }
 
