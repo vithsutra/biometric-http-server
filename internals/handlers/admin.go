@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -40,6 +41,8 @@ func (h *adminHandler) CreateAdminHandler(w http.ResponseWriter, r *http.Request
 
 func (h *adminHandler) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	log.Println(r.Body)
+	log.Println(r.Header)
 
 	isPasswordCorrect, token, err := h.adminInterface.AdminLogin(r)
 
