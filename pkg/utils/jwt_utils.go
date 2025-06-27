@@ -36,7 +36,7 @@ func ValidateToken(tokenString string) error {
 		return fmt.Errorf("token is invalid")
 	}
 
-	if claims["user_id"] == nil || claims["user_name"] == nil {
+	if claims["user_id"] == "" || claims["user_name"] == "" {
 		return fmt.Errorf("user_id or user_name is invalid")
 	}
 

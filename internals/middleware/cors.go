@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"log"
 	"net/http"
 )
 
@@ -15,6 +16,9 @@ func CorsMiddleware(ah http.Handler) http.Handler {
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+
+		log.Println("CORS Origin:", origin)
+		log.Println("CORS Method:", r.Method)
 
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
