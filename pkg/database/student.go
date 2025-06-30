@@ -67,9 +67,10 @@ func (q *Query) UpdateStudent(unitId string, studentId string, studentName strin
 }
 
 func (q *Query) DeleteStudent(unitId string, studentId string) error {
-	query1 := `DELETE FROM fingerprintdata WHERE student_id=$1 RETRUNING student_unit_id`
+	query1 := `DELETE FROM fingerprintdata WHERE student_id=$1 RETURNING student_unit_id;`
 	query2 := `INSERT INTO deletes (unit_id,student_unit_id) VALUES ($1,$2)`
 	query3 := `DELETE FROM inserts WHERE unit_id=$1 AND student_unit_id=$2`
+	query4 := `DELETE FROM student WHERE student_id=$1 AND unit_id=$2`
 
 	tx, err := q.db.Begin()
 
@@ -116,6 +117,11 @@ func (q *Query) DeleteStudent(unitId string, studentId string) error {
 	if rows.Err() != nil {
 		tx.Rollback()
 		return rows.Err()
+	}
+
+	if _, err := tx.Exec(query4, studentId, unitId); err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	tx.Commit()
