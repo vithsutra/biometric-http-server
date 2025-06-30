@@ -29,6 +29,7 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 	router.Handle("/admin/access/user", middlewares.AuthMiddleware(http.HandlerFunc(userHandler.GiveUserAccessHandler))).Methods("POST")
 	router.Handle("/admin/get/users", middlewares.AuthMiddleware(http.HandlerFunc(userHandler.GetAllUsersHandler))).Methods("GET")
 
+	router.HandleFunc("/user/register", userHandler.CreateUserHandler).Methods("POST")
 	router.HandleFunc("/user/login", userHandler.UserLoginHandler).Methods("POST")
 	router.HandleFunc("/user/update/password", userHandler.UpdateNewPasswordHandler).Methods("POST")
 	router.HandleFunc("/user/forgotpassword", userHandler.ForgotPasswordHandler).Methods("POST")

@@ -29,10 +29,10 @@ func NewUserRepo(db *sql.DB) *userRepo {
 	}
 }
 
-func (repo *userRepo) CreateUser(r *http.Request) error {
+func (repo *userRepo) CreateUser(r *http.Request) (string, error) {
 	var createUserRequest models.CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&createUserRequest); err != nil {
-		return errors.New("invalid json format")
+		return "", errors.New("invalid json format")
 	}
 
 	validate := validator.New()
@@ -40,7 +40,7 @@ func (repo *userRepo) CreateUser(r *http.Request) error {
 	validate.RegisterValidation("strongPassword", utils.StrongPasswordValidator)
 
 	if err := validate.Struct(createUserRequest); err != nil {
-		return errors.New("invalid request format")
+		return "", errors.New("invalid request format")
 	}
 
 	var user models.User
@@ -49,7 +49,7 @@ func (repo *userRepo) CreateUser(r *http.Request) error {
 
 	if err != nil {
 		log.Println(err)
-		return err
+		return "", err
 	}
 
 	user.UserId = uuid.NewString()
@@ -61,10 +61,18 @@ func (repo *userRepo) CreateUser(r *http.Request) error {
 
 	if err := query.CreateUser(&user); err != nil {
 		log.Println(err)
-		return errors.New("internal server error")
+		return "", errors.New("internal server error")
 	}
 
-	return nil
+	token, err := utils.GenerateToken(user.UserId, user.UserName)
+
+	if err != nil {
+		log.Println(err)
+		return "", errors.New("internal server error")
+	}
+
+	return token, nil
+
 }
 
 func (repo *userRepo) GiveUserAccess(r *http.Request) (bool, error) {

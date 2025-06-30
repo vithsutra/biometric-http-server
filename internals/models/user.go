@@ -50,7 +50,7 @@ type GiveUserAccessRequest struct {
 }
 
 type UserInterface interface {
-	CreateUser(r *http.Request) error
+	CreateUser(r *http.Request) (string, error)
 	GiveUserAccess(r *http.Request) (bool, error)
 	UserLogin(r *http.Request) (bool, string, error)
 	GetAllUsers(r *http.Request) ([]*User, error)

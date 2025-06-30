@@ -19,14 +19,15 @@ func NewUserHandler(userRepo models.UserInterface) *userHandler {
 
 func (h *userHandler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := h.repo.CreateUser(r); err != nil {
+	token, err := h.repo.CreateUser(r)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "user created successfully"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "user created successfully", "token": token})
 }
 
 func (h *userHandler) GiveUserAccessHandler(w http.ResponseWriter, r *http.Request) {

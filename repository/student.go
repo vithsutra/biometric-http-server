@@ -41,6 +41,10 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 		return errors.New("invalid request format")
 	}
 
+	if len(createStudentRequest.FingerprintData) != 6 {
+		return errors.New("invalid fingerprint data")
+	}
+
 	query := database.NewQuery(repo.db)
 
 	availableStudentIDs, UnitFound, err := query.GetAvailableStudentUnitIDs(createStudentRequest.UnitId)
@@ -71,6 +75,7 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 	student.StudentUsn = createStudentRequest.StudentUsn
 	student.Department = createStudentRequest.Department
 
+	student.StudentUnitId = make([]string, 6)
 	for i := 0; i < 6; i++ {
 		student.StudentUnitId[i] = availableStudentIDs[i]
 	}

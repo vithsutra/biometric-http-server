@@ -104,7 +104,7 @@ func (repo *adminRepo) AdminLogin(r *http.Request) (bool, string, error) {
 		return false, "", err
 	}
 
-	token, err := utils.GenerateToken(AdminDetails.UserId, AdminDetails.UserName)
+	token, err := utils.GenerateAdminToken(AdminDetails.UserId, AdminDetails.UserName)
 	if err != nil {
 		log.Println(err)
 		return false, "", err

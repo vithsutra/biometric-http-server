@@ -125,5 +125,7 @@ func (q *Query) UpdateAvailableStudentUnitIDs(unitID string, student_unit_ids []
 		}
 	}
 
+	tx.Commit()
+
 	return nil
 }
