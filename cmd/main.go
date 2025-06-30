@@ -9,7 +9,6 @@ import (
 
 func init() {
 	serverMode := os.Getenv("SERVER_MODE")
-	serverMode = "dev"
 
 	if serverMode == "dev" {
 		if err := godotenv.Load(); err != nil {
