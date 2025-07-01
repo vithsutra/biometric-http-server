@@ -24,7 +24,7 @@ func InitilizeHttpRouters(db *sql.DB) http.Handler {
 
 	router.HandleFunc("/root/create/admin", adminHandler.CreateAdminHandler).Methods("POST")
 
-	router.HandleFunc("/admin/login", adminHandler.AdminLogin).Methods("POST")
+	router.HandleFunc("/admin/login", adminHandler.AdminLogin).Methods("POST", "OPTIONS")
 	router.Handle("/admin/access/user/{user_id}", middlewares.AuthMiddleware(http.HandlerFunc(userHandler.GiveUserAccessHandler))).Methods("POST")
 	router.Handle("/admin/access/user", middlewares.AuthMiddleware(http.HandlerFunc(userHandler.GiveUserAccessHandler))).Methods("POST")
 	router.Handle("/admin/get/users", middlewares.AuthMiddleware(http.HandlerFunc(userHandler.GetAllUsersHandler))).Methods("GET")
