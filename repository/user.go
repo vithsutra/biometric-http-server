@@ -17,7 +17,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const OTP_EXPIRE_TIME = 5 // in minutes
+const OTP_EXPIRE_TIME = 5
 
 type userRepo struct {
 	db *sql.DB

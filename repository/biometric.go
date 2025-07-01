@@ -102,6 +102,8 @@ func (repo *biometricRepo) DeleteBiometricDevice(r *http.Request) error {
 
 	unitId := vars["unit_id"]
 
+	unitId = strings.ToLower(unitId)
+
 	query := database.NewQuery(repo.db)
 
 	if err := query.DeleteBiometricDevice(unitId); err != nil {
