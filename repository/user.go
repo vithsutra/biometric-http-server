@@ -281,6 +281,7 @@ func (repo *userRepo) ValidateOtp(r *http.Request) (string, error) {
 	return userId, nil
 
 }
+
 func (repo *userRepo) UpdateTime(r *http.Request) error {
 	var updateTimeRequest models.UpdateTimeRequest
 
