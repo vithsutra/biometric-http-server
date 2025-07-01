@@ -1,29 +1,19 @@
 package middlewares
 
-import (
-	"log"
-	"net/http"
-)
+import "net/http"
 
-func CorsMiddleware(ah http.Handler) http.Handler {
+func CorsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
+		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-		if origin == "http://localhost:3000" || origin == "http://localhost:3001" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			// w.Header().Set("Access-Control-Allow-Credentials", "true")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-		}
-
-		log.Println("CORS Origin:", origin)
-		log.Println("CORS Method:", r.Method)
-
+		// If it's a preflight request, just return 200 OK
 		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
+			w.WriteHeader(http.StatusOK)
 			return
 		}
 
-		ah.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
