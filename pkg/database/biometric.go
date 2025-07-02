@@ -38,6 +38,7 @@ func (q *Query) GetBiometricDevices(userId string) ([]*models.Biometric, error) 
 
 	var biometrics []*models.Biometric
 	var biometric models.Biometric
+	
 	rows, err := q.db.Query(query, userId)
 
 	if err != nil {
@@ -49,7 +50,7 @@ func (q *Query) GetBiometricDevices(userId string) ([]*models.Biometric, error) 
 		if err := rows.Scan(&biometric.UserId, &biometric.UnitId, &biometric.Online, &biometric.Label); err != nil {
 			return nil, err
 		}
-		biometrics = append(biometrics, &biometric)
+		biometrics = append(biometrics, biometric)
 	}
 
 	if rows.Err() != nil {
