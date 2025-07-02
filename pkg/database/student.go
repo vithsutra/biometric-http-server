@@ -128,74 +128,119 @@ func (q *Query) DeleteStudent(unitId string, studentId string) error {
 	return nil
 }
 
-func (q *Query) GetStudentDetails(unitId string, limit, offset int) ([]*models.Student, int, error) {
+// func (q *Query) GetStudentDetails(unitId string, limit, offset int) ([]*models.Student, int, error) {
+// 	query1 := `SELECT
+// 				s.student_id,
+// 				s.student_name,
+// 				s.student_usn,
+// 				s.department,
+// 				ARRAY_AGG(fd.student_unit_id ORDER BY fd.student_unit_id) AS student_unit_id
+// 			FROM
+// 				student s
+// 			JOIN
+// 				fingerprintdata fd ON s.student_id = fd.student_id
+// 			WHERE
+// 				s.unit_id = $1
+// 			GROUP BY
+// 				s.student_id, s.student_name, s.student_usn, s.department
+// 			HAVING
+// 				COUNT(fd.student_unit_id) = 6
+// 			LIMIT $2
+// 			OFFSET $3;
+// 			`
+
+// 	query2 := `SELECT
+// 					COUNT(*) AS total_students
+// 				FROM (
+// 					SELECT s.student_id
+// 					FROM student s
+// 					WHERE s.unit_id = $1
+// 					GROUP BY s.student_id
+// 				) AS sub;`
+// 	var students []*models.Student
+
+// 	tx, err := q.db.Begin()
+// 	if err != nil {
+// 		return nil, -1, err
+// 	}
+// 	rows, err := tx.Query(query1, unitId, limit, offset)
+// 	if err != nil {
+// 		tx.Rollback()
+// 		return nil, -1, err
+// 	}
+
+// 	defer rows.Close()
+
+// 	for rows.Next() {
+// 		var student models.Student
+
+// 		if err := rows.Scan(&student.StudentId, &student.StudentName, &student.StudentUsn, &student.Department, pq.Array(&student.StudentUnitId)); err != nil {
+// 			tx.Rollback()
+// 			return nil, -1, err
+// 		}
+
+// 		students = append(students, &student)
+// 	}
+
+// 	if rows.Err() != nil {
+// 		tx.Rollback()
+// 		return nil, -1, rows.Err()
+// 	}
+
+// 	var totalStudents int
+
+// 	if err := tx.QueryRow(query2, unitId).Scan(&totalStudents); err != nil {
+// 		tx.Rollback()
+// 		return nil, -1, err
+// 	}
+
+// 	tx.Commit()
+// 	return students, totalStudents, nil
+// }
+
+func (q *Query) GetStudentDetails(unitId string) ([]*models.Student, error) {
 	query1 := `SELECT 
-				s.student_id,
-				s.student_name,
-				s.student_usn,
-				s.department,
-				ARRAY_AGG(fd.student_unit_id ORDER BY fd.student_unit_id) AS student_unit_id
-			FROM 
-				student s
-			JOIN 
-				fingerprintdata fd ON s.student_id = fd.student_id
-			WHERE
-				s.unit_id = $1
-			GROUP BY 
-				s.student_id, s.student_name, s.student_usn, s.department
-			HAVING 
-				COUNT(fd.student_unit_id) = 6
-			LIMIT $2
-			OFFSET $3;
-			`
+		s.student_id,
+		s.student_name,
+		s.student_usn,
+		s.department,
+		ARRAY_AGG(fd.student_unit_id ORDER BY fd.student_unit_id) AS student_unit_id
+		FROM 
+			student s
+		JOIN 
+			fingerprintdata fd ON s.student_id = fd.student_id
+		WHERE
+			s.unit_id = $1
+		GROUP BY 
+			s.student_id, s.student_name, s.student_usn, s.department
+		HAVING 
+			COUNT(fd.student_unit_id) = 6
+	`
+	rows, err := q.db.Query(query1, unitId)
 
-	query2 := `SELECT 
-					COUNT(*) AS total_students
-				FROM (
-					SELECT s.student_id
-					FROM student s
-					WHERE s.unit_id = $1
-					GROUP BY s.student_id
-				) AS sub;`
-	var students []*models.Student
-
-	tx, err := q.db.Begin()
 	if err != nil {
-		return nil, -1, err
-	}
-	rows, err := tx.Query(query1, unitId, limit, offset)
-	if err != nil {
-		tx.Rollback()
-		return nil, -1, err
+		return nil, err
 	}
 
 	defer rows.Close()
+
+	var students []*models.Student
 
 	for rows.Next() {
 		var student models.Student
 
 		if err := rows.Scan(&student.StudentId, &student.StudentName, &student.StudentUsn, &student.Department, pq.Array(&student.StudentUnitId)); err != nil {
-			tx.Rollback()
-			return nil, -1, err
+			return nil, err
 		}
 
 		students = append(students, &student)
 	}
 
 	if rows.Err() != nil {
-		tx.Rollback()
-		return nil, -1, rows.Err()
+		return nil, rows.Err()
 	}
 
-	var totalStudents int
-
-	if err := tx.QueryRow(query2, unitId).Scan(&totalStudents); err != nil {
-		tx.Rollback()
-		return nil, -1, err
-	}
-
-	tx.Commit()
-	return students, totalStudents, nil
+	return students, nil
 }
 
 func (q *Query) GetStudentLogs(studentId string) ([]*models.StudentAttendanceLog, error) {

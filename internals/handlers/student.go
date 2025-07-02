@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"log"
-	"math"
+	// "math"
 	"net/http"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -56,7 +56,8 @@ func (h *studentHandler) DeleteStudentHandler(w http.ResponseWriter, r *http.Req
 
 func (h *studentHandler) GetStudentDetailsHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	students, total_students, limit, page, err := h.repo.GetStudentDetails(r)
+	// students, total_students, limit, page, err := h.repo.GetStudentDetails(r)
+	students, err := h.repo.GetStudentDetails(r)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -76,12 +77,12 @@ func (h *studentHandler) GetStudentDetailsHandler(w http.ResponseWriter, r *http
 	json.NewEncoder(w).Encode(map[string][]*models.Student{
 		"students": students,
 	})
-	json.NewEncoder(w).Encode(map[string]int{
-		"total_students": total_students,
-		"limit":          limit,
-		"page":           page,
-		"total_pages":    int(math.Ceil(float64(total_students) / float64(limit))),
-	})
+	// json.NewEncoder(w).Encode(map[string]int{
+	// 	"total_students": total_students,
+	// 	"limit":          limit,
+	// 	"page":           page,
+	// 	"total_pages":    int(math.Ceil(float64(total_students) / float64(limit))),
+	// })
 }
 
 func (h *studentHandler) GetStudentLogsHandler(w http.ResponseWriter, r *http.Request) {

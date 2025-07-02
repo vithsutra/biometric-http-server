@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
+	// "strconv"
 	"strings"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -138,43 +138,55 @@ func (repo *studentRepo) DeleteStudent(r *http.Request) error {
 	return nil
 }
 
-func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, int, int, int, error) {
+// func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, int, int, int, error) {
+func (repo *studentRepo) GetStudentDetails(r *http.Request) ([]*models.Student, error) {
 	vars := mux.Vars(r)
 
 	unitId := vars["unit_id"]
 
-	limit := r.URL.Query().Get("limit")
-	if limit == "" {
-		limit = "10"
-	}
+	// limit := r.URL.Query().Get("limit")
+	// if limit == "" {
+	// 	limit = "10"
+	// }
 
-	page := r.URL.Query().Get("page")
-	if page == "" {
-		page = "1"
-	}
+	// page := r.URL.Query().Get("page")
+	// if page == "" {
+	// 	page = "1"
+	// }
 
-	limit_int, err := strconv.Atoi(limit)
-	if err != nil {
-		return nil, -1, -1, -1, errors.New("invalid limit")
-	}
+	// limit_int, err := strconv.Atoi(limit)
+	// if err != nil {
+	// 	return nil, -1, -1, -1, errors.New("invalid limit")
+	// }
 
-	page_int, err := strconv.Atoi(page)
-	if err != nil {
-		return nil, -1, -1, -1, errors.New("invalid page")
-	}
+	// page_int, err := strconv.Atoi(page)
+	// if err != nil {
+	// 	return nil, -1, -1, -1, errors.New("invalid page")
+	// }
 
 	query := database.NewQuery(repo.db)
 
-	offset := (page_int - 1) * limit_int
-
-	students, total_students, err := query.GetStudentDetails(unitId, limit_int, offset)
-
+	exists, err := query.CheckBiometricDeviceExists(unitId)
 	if err != nil {
 		log.Println(err)
-		return nil, -1, -1, -1, errors.New("internal server error")
+		return nil, errors.New("internal server error")
+	}
+	if !exists {
+		return nil, errors.New("biometric device not found")
 	}
 
-	return students, total_students, limit_int, page_int, nil
+	// offset := (page_int - 1) * limit_int
+
+	// students, total_students, err := query.GetStudentDetails(unitId, limit_int, offset)
+
+	students, err := query.GetStudentDetails(unitId)
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	// return students, total_students, limit_int, page_int, nil
+	return students, nil
 }
 
 func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAttendanceLog, error) {

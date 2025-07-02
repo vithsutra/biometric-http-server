@@ -76,7 +76,8 @@ type StudentInterface interface {
 	CreateNewStudent(r *http.Request) error
 	UpdateStudentDetails(r *http.Request) error
 	DeleteStudent(r *http.Request) error
-	GetStudentDetails(r *http.Request) ([]*Student, int, int, int, error)
+	// GetStudentDetails(r *http.Request) ([]*Student, int, int, int, error)
+	GetStudentDetails(r *http.Request) ([]*Student, error)
 	GetStudentLogs(r *http.Request) ([]*StudentAttendanceLog, error)
 	DownloadPdf(r *http.Request) (*gopdf.GoPdf, error)
 }

@@ -129,3 +129,14 @@ func (q *Query) UpdateAvailableStudentUnitIDs(unitID string, student_unit_ids []
 
 	return nil
 }
+
+func (q *Query) CheckBiometricDeviceExists(unitId string) (bool, error) {
+	query := `SELECT EXISTS (
+				SELECT 1 FROM biometric WHERE unit_id=$1
+			 )`
+	isBiometricDeviceExists := false
+
+	err := q.db.QueryRow(query, unitId).Scan(&isBiometricDeviceExists)
+
+	return isBiometricDeviceExists, err
+}
