@@ -34,22 +34,22 @@ func (q *Query) CreateBiometricDevice(biometric *models.Biometric) error {
 }
 
 func (q *Query) GetBiometricDevices(userId string) ([]*models.Biometric, error) {
-	query := `SELECT user_id,unit_id,online,label FROM biometric WHERE user_id=$1`
+	query := `SELECT user_id, unit_id, online, label FROM biometric WHERE user_id=$1`
 
 	var biometrics []*models.Biometric
-	var biometric models.Biometric
-	rows, err := q.db.Query(query, userId)
 
+	rows, err := q.db.Query(query, userId)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
+		biometric := new(models.Biometric)
 		if err := rows.Scan(&biometric.UserId, &biometric.UnitId, &biometric.Online, &biometric.Label); err != nil {
 			return nil, err
 		}
-		biometrics = append(biometrics, &biometric)
+		biometrics = append(biometrics, biometric)
 	}
 
 	if rows.Err() != nil {
@@ -58,6 +58,7 @@ func (q *Query) GetBiometricDevices(userId string) ([]*models.Biometric, error) 
 
 	return biometrics, nil
 }
+
 
 func (q *Query) UpdateBiometricLabel(unit_id string, label string) error {
 	query := `UPDATE biometric SET label=$2 WHERE unit_id=$1`
