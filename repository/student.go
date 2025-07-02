@@ -42,7 +42,7 @@ func (repo *studentRepo) CreateNewStudent(r *http.Request) error {
 	}
 
 	if len(createStudentRequest.FingerprintData) != 6 {
-		return errors.New("invalid fingerprint data")
+		return errors.New("invalid fingerprint data",len(createStudentRequest.FingerprintData))
 	}
 
 	query := database.NewQuery(repo.db)
