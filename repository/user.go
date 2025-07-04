@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/VsenseTechnologies/biometric_http_server/internals/models"
@@ -333,6 +334,17 @@ func (repo *userRepo) GetBiometricDevicesForRegisterForm(r *http.Request) ([]str
 
 	query := database.NewQuery(repo.db)
 
+	exists, err := query.CheckUserIdExists(userId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	if !exists {
+		return nil, errors.New("user not found")
+	}
+
 	units, err := query.GetBiometricDevicesForRegisterForm(userId)
 
 	if err != nil {
@@ -347,6 +359,19 @@ func (repo *userRepo) GetStudentUnitIdsForRegisterForm(r *http.Request) ([]strin
 
 	query := database.NewQuery(repo.db)
 
+	unitId = strings.ToLower(unitId)
+
+	exists, err := query.CheckBiometricDeviceExists(unitId)
+
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
+
+	if !exists {
+		return nil, errors.New("biometric device not found")
+	}
+
 	studentUnitIds, err := query.GetStudentUnitIdsForRegisterForm(unitId)
 
 	if err != nil {
@@ -355,4 +380,28 @@ func (repo *userRepo) GetStudentUnitIdsForRegisterForm(r *http.Request) ([]strin
 	}
 
 	return studentUnitIds, nil
+}
+
+func (repo *userRepo) DeleteUser(r *http.Request) error {
+	vars := mux.Vars(r)
+	userId := vars["user_id"]
+
+	query := database.NewQuery(repo.db)
+
+	exists, err := query.CheckUserIdExists(userId)
+	if err != nil {
+		log.Println(err)
+		return errors.New("internal server error")
+	}
+
+	if !exists {
+		return errors.New("user not found")
+	}
+
+	if err := query.DeleteUser(userId); err != nil {
+		log.Println(err)
+		return errors.New("internal server error")
+	}
+
+	return nil
 }

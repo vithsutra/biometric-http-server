@@ -200,3 +200,16 @@ func (h *userHandler) GetStudentUnitIdsForRegisterForm(w http.ResponseWriter, r 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string][]string{"student_unit_ids": unitIds})
 }
+
+func (h *userHandler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if err := h.repo.DeleteUser(r); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "user deleted successfully"})
+}

@@ -18,15 +18,24 @@ import "net/http"
 // 	})
 // }
 
+var allowedOrigins = map[string]bool{
+	"http://localhost:3000":                 true,
+	"http://localhost:3001":                 true,
+	"https://biometric.admin.vithsutra.com": true,
+}
+
 func CorsMiddleware(ah http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")                          // Allow all origins
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")               // Allow specific methods
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With") // Allow headers
-		w.Header().Set("Access-Control-Allow-Credentials", "true")                                      // Allow cookies (if needed)
+		origin := r.Header.Get("Origin")
 
+		if allowedOrigins[origin] {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Access-Control-Allow-Origin", origin)                                           // Allow all origins
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")               // Allow specific methods
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With") // Allow headers
+			w.Header().Set("Access-Control-Allow-Credentials", "true")                                      // Allow cookies (if needed)
+		}
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusOK)
 			return

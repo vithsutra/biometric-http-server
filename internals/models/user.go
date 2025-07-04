@@ -60,4 +60,5 @@ type UserInterface interface {
 	UpdateTime(r *http.Request) error
 	GetBiometricDevicesForRegisterForm(r *http.Request) ([]string, error)
 	GetStudentUnitIdsForRegisterForm(r *http.Request) ([]string, error)
+	DeleteUser(r *http.Request) error
 }

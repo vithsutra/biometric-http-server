@@ -248,3 +248,9 @@ func (q *Query) GetStudentUnitIdsForRegisterForm(unitId string) ([]string, error
 
 	return studentUnitIds, nil
 }
+
+func (q *Query) DeleteUser(userId string) error {
+	query := `DELETE FROM users WHERE user_id=$1`
+	_, err := q.db.Exec(query, userId)
+	return err
+}
