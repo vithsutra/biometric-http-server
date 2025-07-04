@@ -53,12 +53,9 @@ func (q *Query) InitilizeDatabase() error {
 		)`,
 		`CREATE TABLE IF NOT EXISTS attendance (
 			student_id VARCHAR NOT NULL, 
-			student_unit_id VARCHAR NOT NULL, 
-			unit_id VARCHAR NOT NULL, 
 			date VARCHAR NOT NULL, 
 			login VARCHAR NOT NULL, 
 			logout VARCHAR NOT NULL, 
-			FOREIGN KEY (unit_id) REFERENCES biometric(unit_id) ON DELETE CASCADE, 
 			FOREIGN KEY (student_id) REFERENCES student(student_id) ON DELETE CASCADE
 		)`,
 		`CREATE TABLE IF NOT EXISTS times (
