@@ -68,4 +68,4 @@ jobs:
             docker pull $IMAGE_NAME
             docker ps | grep biometric-http-server | awk '{print $1}' | xargs -I {} docker kill {}
             docker ps -a | grep biometric-http-server | awk '{print $1}' | xargs -I {} docker rm {}
-            docker run -d -p 8081:8080 --name biometric-http-server --env-file ~/biometric/biometric-http-server-deployment/.env $IMAGE_NAME
+            docker run -d -p 8080:8080 --name biometric-http-server --env-file ~/biometric/biometric-http-server-deployment/.env $IMAGE_NAME
