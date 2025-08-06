@@ -296,6 +296,13 @@ func (r *ExcelRepository) DownloadExcel(req *models.ExcelDownloadRequest) (*exce
 			}
 
 			if login == "" || logout == "" {
+				status = "A"
+				cell, _ := excelize.CoordinatesToCellName(col, row)
+				file.SetCellValue(sheet, cell, status)
+				continue
+			}
+
+			if logout == "25:00" {
 				status = "NC"
 				cell, _ := excelize.CoordinatesToCellName(col, row)
 				file.SetCellValue(sheet, cell, status)
