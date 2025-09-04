@@ -199,7 +199,7 @@ func (repo *studentRepo) GetStudentLogs(r *http.Request) ([]*models.StudentAtten
 
 	if err != nil {
 		log.Println(err)
-		return nil, errors.New("internal server error")
+		return nil, err
 	}
 
 	return logs, nil
